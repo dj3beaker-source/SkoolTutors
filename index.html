@@ -76,6 +76,10 @@
   .gate-card input{width:100%;text-align:center;letter-spacing:1px;margin-bottom:12px}
   .gate-err{color:#ffc2cc;font-size:13.5px;min-height:18px;margin-top:8px}
   .locked{filter:blur(5px);pointer-events:none;user-select:none}
+  /* inline video the agent surfaces */
+  .video-embed{position:relative;width:100%;max-width:360px;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line);margin:6px 0}
+  .video-embed::before{content:"";display:block;padding-top:56.25%}
+  .video-embed iframe,.video-embed video{position:absolute;inset:0;width:100%;height:100%;border:0}
 </style>
 </head>
 <body>
@@ -277,19 +281,19 @@ function maybeSwitchLang(text){ const d=detectLang(text); if(d && d!==lang){ set
 
 /* ============ DEMO LESSONS (curated sample set) ============ */
 const DEMO_LESSONS = [
-  { grade:'3', subject:'Math', subjectEs:'Matemáticas', domain:'Fractions', std:'CCSS 3.NF', title:'Understanding Fractions', titleEs:'Comprender las Fracciones',
+  { grade:'3', key:'math-3-1', subject:'Math', subjectEs:'Matemáticas', domain:'Fractions', std:'CCSS 3.NF', title:'Understanding Fractions', titleEs:'Comprender las Fracciones',
     objectives:['Understand a fraction as equal parts of a whole','Place fractions on a number line','Recognize equivalent fractions like 1/2 = 2/4'],
     explain:'A fraction names equal parts of a whole. The bottom number (denominator) says how many equal parts the whole is split into; the top number (numerator) says how many parts you have.',
     example:'A pizza cut into 4 equal slices: each slice is 1/4. If you eat 2 slices, you have eaten 2/4, which is the same as 1/2 of the pizza.' },
-  { grade:'5', subject:'English Language Arts', subjectEs:'Lengua y Literatura', domain:'Reading: Informational Text', std:'CCSS RI.5.2', title:'Main Idea & Supporting Details', titleEs:'Idea Principal y Detalles de Apoyo',
+  { grade:'5', key:'ela-4-1', subject:'English Language Arts', subjectEs:'Lengua y Literatura', domain:'Reading: Informational Text', std:'CCSS RI.5.2', title:'Main Idea & Supporting Details', titleEs:'Idea Principal y Detalles de Apoyo',
     objectives:['Identify the main idea of a passage','Find details that support the main idea','Summarize a text in your own words'],
     explain:'The main idea is what a passage is mostly about. Supporting details are the facts, examples, and reasons that tell you more about that main idea.',
     example:'A paragraph about how bees help plants: the main idea is "bees are important for plants," and details like "bees carry pollen flower to flower" support it.' },
-  { grade:'8', subject:'Math', subjectEs:'Matemáticas', domain:'Geometry', std:'CCSS 8.G.7', title:'The Pythagorean Theorem', titleEs:'El Teorema de Pitágoras',
+  { grade:'8', key:'math-8-2', subject:'Math', subjectEs:'Matemáticas', domain:'Geometry', std:'CCSS 8.G.7', title:'The Pythagorean Theorem', titleEs:'El Teorema de Pitágoras',
     objectives:['Understand a² + b² = c² for right triangles','Identify the hypotenuse','Use the theorem to find a missing side'],
     explain:'In a right triangle, the square of the longest side (the hypotenuse, opposite the right angle) equals the sum of the squares of the other two sides: a² + b² = c².',
     example:'A right triangle with legs 3 and 4: 3² + 4² = 9 + 16 = 25, so the hypotenuse is √25 = 5.' },
-  { grade:'4', subject:'Science', subjectEs:'Ciencias', domain:'Physical Science — Energy', std:'NGSS 4-PS3', title:'Forces and Motion', titleEs:'Fuerzas y Movimiento',
+  { grade:'4', key:'science-3-0', subject:'Science', subjectEs:'Ciencias', domain:'Physical Science — Energy', std:'NGSS 4-PS3', title:'Forces and Motion', titleEs:'Fuerzas y Movimiento',
     objectives:['Describe how forces change motion','Relate speed to energy','Predict what happens when forces are balanced or unbalanced'],
     explain:'A force is a push or a pull. Forces can start motion, stop it, speed it up, slow it down, or change its direction. A faster-moving object carries more energy.',
     example:'Kicking a soccer ball: your foot applies a force that sends it moving. Kick harder (more force) and it moves faster and carries more energy.' },
@@ -306,6 +310,34 @@ function buildLessonOptions(){
   if(cur) sel.value = cur;
 }
 
+/* ============ Agent video surfacing — tutor shows the current lesson's video ([[VIDEO]]),
+   parent can pull up ANY of these by topic ([[VIDEO:key]]). Real Skool Tutors lesson videos. */
+const DEMO_VIDEOS = {
+  "math-3-1": { youtube:"G0poMQDdGVM", title:"Understanding Fractions", label:"Grade 3 Math" },
+  "ela-4-1":  { youtube:"L6rdwgHhqcc", title:"Main Idea & Supporting Details", label:"Grade 4 ELA" },
+  "math-8-2": { heygen:"https://resource2.heygen.ai/aws_pacific/avatar_tmp/08aa811943204f32be54eb59c75adf17/vf6bec8336c6b4940b89786450a8f0469/caption_9b5eea9b5257442ba25edefe2b8636c0.mp4", title:"The Pythagorean Theorem", label:"Grade 8 Math" },
+  "science-3-0": { heygen:"https://resource2.heygen.ai/aws_pacific/avatar_tmp/08aa811943204f32be54eb59c75adf17/vcf9398e1ab2a4888928eb66fdc2d7dd1/caption_761184b8b77c46b78c20292546ea89e7.mp4", title:"Forces and Motion", label:"Grade 3 Science" },
+  "math-3-0": { youtube:"0UGXM_f3qQU", title:"Multiplication & Division within 100", label:"Grade 3 Math" },
+  "math-4-1": { youtube:"6Lo2epqf548", title:"Equivalent Fractions", label:"Grade 4 Math" },
+  "math-5-0": { youtube:"YSVHsCgcn_M", title:"Adding Fractions (unlike denominators)", label:"Grade 5 Math" },
+  "math-6-1": { youtube:"NdOIDUHU9sg", title:"Dividing Fractions", label:"Grade 6 Math" },
+  "ela-1-0":  { youtube:"b9GV-h5IigQ", title:"Phonics & Decoding", label:"Grade 1 ELA" },
+  "math-1-0": { youtube:"W8FghDZs9dk", title:"Adding & Subtracting within 20", label:"Grade 1 Math" },
+};
+const VIDEO_MARK = /\[\[VIDEO(?::([a-zA-Z0-9\-]+))?\]\]/gi;
+function hasVideo(key){ const v=DEMO_VIDEOS[key]; return !!(v&&(v.youtube||v.heygen)); }
+function stripVideoMarks(s){ return (s||'').replace(VIDEO_MARK,'').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(); }
+function videoKeysIn(text,fallbackKey){ const ks=[]; let m; VIDEO_MARK.lastIndex=0; while((m=VIDEO_MARK.exec(text))) ks.push(m[1]||fallbackKey||null); return ks.filter(k=>k&&hasVideo(k)); }
+function availableVideoIndex(){ const o=[]; for(const k in DEMO_VIDEOS) if(hasVideo(k)) o.push(`${k}: ${DEMO_VIDEOS[k].title} (${DEMO_VIDEOS[k].label})`); return o; }
+function appendVideoBubble(box,key){
+  const v=DEMO_VIDEOS[key]; if(!v||!box) return;
+  const d=document.createElement('div'); d.className='video-embed';
+  d.innerHTML = v.youtube
+    ? `<iframe src="https://www.youtube.com/embed/${v.youtube}" title="${(v.title||'').replace(/"/g,'')}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+    : `<video controls preload="metadata" src="${v.heygen}"></video>`;
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
+
 /* ============ STATE + TUTOR ============ */
 const state = { grade:'5', subject:'Math', tutorCtx:null, messages:[], voiceOn:true };
 window.skoolState = state;   // shared with the parent-agent module (lesson context)
@@ -314,7 +346,7 @@ let hsAudio=null;
 function startSession(){
   const l = DEMO_LESSONS[+document.getElementById('lessonSel').value || 0];
   state.grade = l.grade; state.subject = l.subject;
-  state.tutorCtx = { grade:l.grade, subject:l.subject, domain:l.domain, std:l.std, objectives:l.objectives, lessonTitle:l.title, explain:l.explain, example:l.example };
+  state.tutorCtx = { grade:l.grade, subject:l.subject, domain:l.domain, std:l.std, objectives:l.objectives, lessonTitle:l.title, explain:l.explain, example:l.example, videoKey:(l.key&&hasVideo(l.key))?l.key:null };
   state.messages = [];
   document.getElementById('msgs').innerHTML='';
   const greeting = lang==='es'
@@ -339,7 +371,8 @@ Rules:
 - Keep every response brief — under 3 sentences — so it is natural to listen to. Ask one question at a time.
 - Match vocabulary and tone to Grade ${ctx.grade}. Praise effort and reasoning, not just correctness; never be condescending.
 - STAY STRICTLY ON ACADEMIC SCHOOL TOPICS (Math, English/Reading & Writing, Science, Social Studies, study skills). If the student goes off-topic — games, social media, personal advice, gossip, jokes — gently decline in one sentence and steer back to the lesson. Never engage with the off-topic content itself.
-- If asked to just give the answer to copy, redirect to guiding them through it instead.
+- If asked to just give the answer to copy, redirect to guiding them through it instead.${ctx.videoKey?`
+- SUPPORTING VIDEO: A short overview video for THIS lesson is available. If the student is confused, asks to see a video, or it would clearly help, display it by writing the tag [[VIDEO]] (exactly that, on its own line). The app turns the tag into a player. Introduce it first, e.g. "Here's a video that gives a quick overview of what we're working on:" then the tag. Use it sparingly — at most once unless they ask again, and never instead of guiding them.`:''}
 - LANGUAGE: Respond ENTIRELY in ${lang==='es'?'Spanish (español), using natural, warm, grade-appropriate Spanish':'English'}. Keep all explanations, questions, and praise in that language${lang==='es'?'. If the student replies in English, you may gently continue in Spanish unless they ask to switch.':''}`;
 }
 
@@ -370,9 +403,12 @@ function sendChat(){
 }
 function addMsg(role,text,opts){
   state.messages.push({role,text});
-  const m=document.createElement('div'); m.className='msg '+role; m.textContent=text;
-  const box=document.getElementById('msgs'); box.appendChild(m); box.scrollTop=box.scrollHeight;
-  if(role==='bot' && !(opts&&opts.silent)) speak(text);
+  const disp = role==='bot' ? stripVideoMarks(text) : text;
+  const m=document.createElement('div'); m.className='msg '+role; m.textContent=disp;
+  const box=document.getElementById('msgs'); box.appendChild(m);
+  if(role==='bot') videoKeysIn(text, state.tutorCtx&&state.tutorCtx.videoKey).forEach(k=>appendVideoBubble(box,k));
+  box.scrollTop=box.scrollHeight;
+  if(role==='bot' && !(opts&&opts.silent)) speak(disp);
   if(role==='user') stopSpeaking();
 }
 function showTyping(){const box=document.getElementById('msgs');const d=document.createElement('div');d.className='msg bot';d.id='typing';d.innerHTML='<span class="typing"><span></span><span></span><span></span></span>';box.appendChild(d);box.scrollTop=box.scrollHeight;}
@@ -432,13 +468,18 @@ How you help:
 - Then give 1-2 concrete tips for helping their child with this at home.
 - Keep replies short and conversational — 2 to 4 sentences — easy to listen to; then offer to go deeper or give another example.
 - You can help with ANY K-12 subject and with how to support a child's learning. If asked about something unrelated to school or parenting support, gently steer back.
+- SUPPORTING VIDEOS: Skool Tutors has short lesson videos. You may show the parent ONE by writing the tag [[VIDEO:<key>]] using the EXACT key from the list below that best matches the topic the parent is teaching. Introduce it first, e.g. "Here's a video that walks through this:" then the tag. Only when it genuinely helps. Available videos (key: title):
+${availableVideoIndex().join('\n')}
 - LANGUAGE: Respond ENTIRELY in ${lang==='es'?'Spanish (español), warm and natural':'English'}.`;
 }
 function paAddMsg(role,text){
   paMessages.push({role,text});
   const box=document.getElementById('paMsgs'); if(!box) return;
-  const m=document.createElement('div'); m.className='msg '+(role==='user'?'user':'bot'); m.textContent=text; box.appendChild(m); box.scrollTop=box.scrollHeight;
-  if(role==='bot') paSpeak(text);
+  const disp = role==='bot' ? stripVideoMarks(text) : text;
+  const m=document.createElement('div'); m.className='msg '+(role==='user'?'user':'bot'); m.textContent=disp; box.appendChild(m);
+  if(role==='bot') videoKeysIn(text).forEach(k=>appendVideoBubble(box,k));
+  box.scrollTop=box.scrollHeight;
+  if(role==='bot') paSpeak(disp);
 }
 async function paLiveTutor(){
   paStatus(lang==='es'?'Pensando…':'Thinking…');
