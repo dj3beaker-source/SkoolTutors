@@ -249,12 +249,31 @@ function applyLang(){
   const lb=document.getElementById('langBtn'); if(lb){ lb.textContent = lang==='en'?'ES':'EN'; lb.title = lang==='en'?'Cambiar a español':'Switch to English'; }
   buildLessonOptions();   // relocalize the lesson dropdown (preserves the current selection)
 }
-function toggleLang(){
-  lang = lang==='en'?'es':'en'; localStorage.setItem('st_lang',lang); applyLang();
-  if(typeof updateMicBtn==='function') updateMicBtn();
-  if(typeof rec!=='undefined' && rec) rec.lang = lang==='es'?'es-ES':'en-US';
-  if(state.tutorCtx) startSession();   // re-greet in the new language to show the swap live
+function setLang(newLang, regreet){
+  if(newLang!==lang){
+    lang=newLang; localStorage.setItem('st_lang',lang); applyLang();
+    if(typeof updateMicBtn==='function') updateMicBtn();
+    if(typeof rec!=='undefined' && rec) rec.lang = lang==='es'?'es-ES':'en-US';
+    if(typeof paRec!=='undefined' && paRec) paRec.lang = lang==='es'?'es-ES':'en-US';
+  }
+  if(regreet && state.tutorCtx) startSession();   // manual toggle re-greets to show the swap live
 }
+function toggleLang(){ setLang(lang==='en'?'es':'en', true); }
+/* Auto-detect the language a person is typing/speaking and switch the whole experience. */
+function detectLang(text){
+  const s=(text||'').toLowerCase().trim(); if(!s) return null;
+  // explicit requests ("I don't speak Spanish", "no habla inglés", "en español"…)
+  if(/\b(in english|english please|speak english|switch to english|en ingl[eé]s)\b/.test(s) || /\bi?\s*(don'?t|do not|no)\s*(speak|hablo|ablo|habla)\s*spanish\b/.test(s) || /\bno\s*espa[ñn]ol\b/.test(s)) return 'en';
+  if(/\b(in spanish|switch to spanish|en espa[ñn]ol|espa[ñn]ol por favor)\b/.test(s) || /\bh[áa]bla(me)?\s*espa[ñn]ol\b/.test(s) || /\bno\s*(hablo|ablo|abla|habla|speak)\s*(ingl[eé]s|english)\b/.test(s)) return 'es';
+  if(/[ñ¿¡áéíóúü]/.test(s)) return 'es';                 // Spanish-only characters
+  const esW=new Set(['el','la','los','las','un','una','que','de','en','y','es','no','si','por','para','con','como','que','como','hola','gracias','quiero','necesito','ayuda','hablo','habla','entiendo','espanol','ingles','mi','tu','su','pero','porque','esto','esta','este','muy','mas','puedo','puede','nino','hijo','hija','leccion','tarea','fracciones','matematicas']);
+  const enW=new Set(['the','a','an','and','is','are','to','of','in','for','with','i','you','my','your','what','how','hello','hi','thanks','thank','want','need','help','speak','understand','english','spanish','but','because','this','that','very','more','can','child','son','daughter','lesson','homework','do','dont','please','math']);
+  const words=s.split(/[^a-zñáéíóúü]+/).filter(Boolean); let es=0,en=0;
+  for(const w of words){ if(esW.has(w))es++; if(enW.has(w))en++; }
+  if(words.length>=2){ if(es>=2&&es>en) return 'es'; if(en>=2&&en>es) return 'en'; }
+  return null;
+}
+function maybeSwitchLang(text){ const d=detectLang(text); if(d && d!==lang){ setLang(d,false); return d; } return null; }
 
 /* ============ DEMO LESSONS (curated sample set) ============ */
 const DEMO_LESSONS = [
@@ -344,7 +363,9 @@ function sendChat(){
   const text = inp.value.trim(); if(!text) return;
   if(!state.tutorCtx) startSession();
   inp.value='';
+  const sw = maybeSwitchLang(text);
   addMsg('user', text);
+  if(sw) addMsg('sys', sw==='es'?'🌎 Cambiado a español':'🌎 Switched to English');
   liveTutor();
 }
 function addMsg(role,text,opts){
@@ -429,7 +450,7 @@ async function paLiveTutor(){
     paStatus(''); paAddMsg('bot',(data.content&&data.content[0]&&data.content[0].text)||'(no response)');
   }catch(e){ paStatus('⚠ '+(lang==='es'?'No se pudo contactar al asistente.':'Couldn’t reach the assistant.')); }
 }
-function paSend(){ const inp=document.getElementById('paIn'); const text=(inp.value||'').trim(); if(!text) return; inp.value=''; paAddMsg('user',text); paLiveTutor(); }
+function paSend(){ const inp=document.getElementById('paIn'); const text=(inp.value||'').trim(); if(!text) return; inp.value=''; const sw=maybeSwitchLang(text); paAddMsg('user',text); if(sw){ const box=document.getElementById('paMsgs'); if(box){ const d=document.createElement('div'); d.className='msg sys'; d.textContent=sw==='es'?'🌎 Cambiado a español':'🌎 Switched to English'; box.appendChild(d); box.scrollTop=box.scrollHeight; } } paLiveTutor(); }
 window.paSend=paSend;
 async function paSpeak(text){
   if(paAudio){ try{paAudio.pause();}catch(e){} paAudio=null; }
