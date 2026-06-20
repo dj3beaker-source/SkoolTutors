@@ -128,17 +128,16 @@
     <!-- DEMO B: PARENT AGENT -->
     <section class="panel">
       <h2>👪 Bilingual Parent Agent <span class="tag">LIVE</span></h2>
-      <p class="desc">A voice coach for the <b>parent</b>, not the student. It explains the current lesson to a caregiver in plain language — in English or Spanish — so families who never learned the material, or face a language barrier, can still help at home.</p>
-      <div class="parent-cta">
-        <div class="big">👪</div>
-        <p style="margin:0;color:#cfd5f0;font-size:14px">Launch the agent and <b>talk to it out loud</b>. Try: <i>"Can you explain today's lesson so I can help my child?"</i> — then ask it in Spanish.</p>
-        <button class="btn btn-primary" id="parentBtn" onclick="launchParentAgent()">▶ Launch Parent Agent</button>
-        <ul class="hintlist" style="text-align:left">
-          <li>Uses the lesson selected in the tutor panel for context.</li>
-          <li>Allow your microphone when prompted.</li>
-          <li>Click the floating widget again to end the session.</li>
-        </ul>
+      <p class="desc">A voice coach for the <b>parent</b>, not the student — it explains the current lesson to a caregiver in plain language, in English or Spanish. <b>Talk or type</b>; the conversation shows below.</p>
+      <div class="chat">
+        <div class="msgs" id="paMsgs"></div>
+        <div class="chat-in">
+          <button class="iconbtn" id="paCallBtn" title="Start a voice call">📞</button>
+          <input type="text" id="paIn" placeholder="Type a question for the parent agent…" onkeydown="if(event.key==='Enter'){window.paSend&&window.paSend()}">
+          <button class="btn btn-primary btn-sm" id="paSendBtn" onclick="window.paSend&&window.paSend()">Send</button>
+        </div>
       </div>
+      <div id="paStatus" style="margin-top:8px;font-size:12.5px;color:var(--muted);text-align:center">Tap 📞 to start a voice call, or just type a question to begin.</div>
     </section>
   </div>
 
@@ -173,6 +172,7 @@ let DEMO_TOKEN = sessionStorage.getItem('st_token') || '';
 
 async function boot(){
   try{ Object.assign(BACKEND, await (await fetch('/config')).json()); }catch(e){}
+  window.PARENT_AGENT_ID = BACKEND.parentAgentId;   // for the parent-agent module fallback
   buildLessonOptions();
   if(BACKEND.gated && DEMO_TOKEN !== 'verified'){ document.getElementById('gate').style.display='grid'; document.getElementById('demoArea').classList.add('locked'); }
   else { unlockUI(); }
@@ -219,6 +219,7 @@ function buildLessonOptions(){
 
 /* ============ STATE + TUTOR ============ */
 const state = { grade:'5', subject:'Math', tutorCtx:null, messages:[], voiceOn:true };
+window.skoolState = state;   // shared with the parent-agent module (lesson context)
 let hsAudio=null;
 
 function startSession(){
@@ -318,22 +319,70 @@ function beginListen(){ if(!SpeechRec||listening) return; if(!rec)initRec(); doc
 function maybeAutoListen(){ if(!voiceMode||!SpeechRec||!state.tutorCtx) return; beginListen(); }
 function voiceWelcome(){ state.voiceOn=true; const vb=document.getElementById('voiceBtn'); if(vb) vb.textContent='🔊'; voiceMode=true; primeMic(); addMsg('bot','Please ask me a question about a school topic.'); }
 
-/* ============ PARENT AGENT (ElevenLabs Conversational AI) ============ */
-let convaiLoaded=false;
-function launchParentAgent(){
-  const existing=document.getElementById('parentConvai');
-  if(existing){ existing.remove(); document.getElementById('parentBtn').textContent='▶ Launch Parent Agent'; return; }
-  const ctx=state.tutorCtx||{};
-  const w=document.createElement('elevenlabs-convai');
-  w.id='parentConvai';
-  w.setAttribute('agent-id', BACKEND.parentAgentId);
-  w.setAttribute('dynamic-variables', JSON.stringify({ audience:'parent', grade:ctx.grade||'', subject:ctx.subject||'', topic:ctx.lessonTitle||ctx.domain||'', language:'English' }));
-  document.body.appendChild(w);
-  document.getElementById('parentBtn').textContent='■ End Parent Agent';
-  if(!convaiLoaded){ const s=document.createElement('script'); s.src='https://elevenlabs.io/convai-widget/index.js'; s.async=true; document.body.appendChild(s); convaiLoaded=true; }
-}
-
 boot();
+</script>
+
+<!-- Integrated Parent Agent: transcript + voice + typing via the ElevenLabs ConvAI SDK.
+     Connects with a server-minted signed URL (key-authorized, domain-independent);
+     falls back to the public agentId (which then relies on the agent's allowed domains). -->
+<script type="module">
+let Conversation = null;
+try { ({ Conversation } = await import('https://esm.sh/@elevenlabs/client')); }
+catch (e) { console.error('ConvAI SDK failed to load', e); }
+
+let convo = null, connecting = false, lastRole = null;
+const pending = [];
+const byId = id => document.getElementById(id);
+const setStatus = t => { const e = byId('paStatus'); if (e) e.textContent = t; };
+function add(role, text){
+  const box = byId('paMsgs'); if (!box || !text) return;
+  // Collapse consecutive same-role messages into one bubble (handles tentative→final transcripts).
+  if (lastRole === role && box.lastElementChild) box.lastElementChild.textContent = text;
+  else { const m = document.createElement('div'); m.className = 'msg ' + (role === 'user' ? 'user' : 'bot'); m.textContent = text; box.appendChild(m); }
+  lastRole = role; box.scrollTop = box.scrollHeight;
+}
+function ctxVars(){
+  const c = (window.skoolState && window.skoolState.tutorCtx) || {};
+  return { audience:'parent', grade:c.grade||'', subject:c.subject||'', topic:c.lessonTitle||c.domain||'', language:'English' };
+}
+const demoToken = () => sessionStorage.getItem('st_code') || '';
+function updateCallBtn(){ const b = byId('paCallBtn'); if (!b) return; b.textContent = convo ? '⏹' : '📞'; b.title = convo ? 'End call' : 'Start a voice call'; b.classList.toggle('listening', !!convo); }
+async function getSignedUrl(){
+  try { const r = await fetch('/api/convai-signed-url', { headers: demoToken() ? { 'x-demo-token': demoToken() } : {} }); const d = await r.json(); return d.signedUrl || null; }
+  catch (e) { return null; }
+}
+function send(text){ if (!convo) return; if (typeof convo.sendUserMessage === 'function') convo.sendUserMessage(text); else if (typeof convo.sendText === 'function') convo.sendText(text); }
+function flush(){ while (convo && pending.length) send(pending.shift()); }
+async function startCall(){
+  if (convo || connecting) return;
+  if (!Conversation) { setStatus('Voice library failed to load — refresh and try again.'); return; }
+  connecting = true; setStatus('Connecting…');
+  try {
+    const signedUrl = await getSignedUrl();
+    const opts = {
+      dynamicVariables: ctxVars(),
+      onConnect: () => { setStatus('Connected — talk out loud, or type below.'); flush(); },
+      onDisconnect: () => { setStatus('Call ended. Tap 📞 to start again.'); convo = null; lastRole = null; updateCallBtn(); },
+      onError: (e) => setStatus('Error: ' + ((e && (e.message || e)) || 'connection failed')),
+      onModeChange: (m) => { const mode = m && (m.mode || m); setStatus(mode === 'speaking' ? '🔊 Agent speaking…' : '🎤 Listening…'); },
+      onMessage: (m) => { const src = (m && (m.source || m.role)) || 'ai'; const text = (m && (m.message || m.text)) || ''; if (text) add(src === 'user' ? 'user' : 'ai', text); },
+    };
+    convo = signedUrl
+      ? await Conversation.startSession({ signedUrl, ...opts })
+      : await Conversation.startSession({ agentId: window.PARENT_AGENT_ID || '', ...opts });
+    updateCallBtn(); flush();
+  } catch (e) {
+    setStatus('Could not start: ' + ((e && e.message) || e) + ' — allow your mic; check the ElevenLabs key permission / allowed domains.');
+    convo = null; updateCallBtn();
+  } finally { connecting = false; }
+}
+async function endCall(){ if (convo) { try { await convo.endSession(); } catch (e) {} convo = null; setStatus('Call ended.'); updateCallBtn(); } }
+window.paSend = function(){
+  const inp = byId('paIn'); const text = (inp.value || '').trim(); if (!text) return;
+  inp.value = ''; add('user', text); pending.push(text);
+  if (convo) flush(); else startCall();
+};
+const cb = byId('paCallBtn'); if (cb) cb.addEventListener('click', () => { convo ? endCall() : startCall(); });
 </script>
 </body>
 </html>

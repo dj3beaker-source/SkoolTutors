@@ -98,6 +98,21 @@ app.post('/api/tts', requireDemo, rateLimit(240, 30 * 60000), async (req, res) =
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Parent agent: mint a signed WebSocket URL for the ElevenLabs Conversational
+// AI agent. Server-side + key-authorized, so it works regardless of page domain
+// (no widget allowed-domains dependency) and keeps the key off the browser.
+app.get('/api/convai-signed-url', requireDemo, rateLimit(60, 30 * 60000), async (req, res) => {
+  if (!process.env.ELEVENLABS_API_KEY) return res.status(501).json({ error: 'ElevenLabs not configured' });
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(PARENT_AGENT_ID)}`,
+      { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY } });
+    const d = await r.json();
+    const url = d.signed_url || d.signedUrl;
+    if (!r.ok || !url) return res.status(r.status || 500).json({ error: d.detail?.message || d.detail || d.message || 'Could not get signed URL' });
+    res.json({ signedUrl: url });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 await app.listen(PORT);
 console.log(`Skool Tutors demo running at ${APP_URL}`);
 console.log(`  • Demo:    ${APP_URL}/`);
