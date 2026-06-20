@@ -247,6 +247,7 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-html]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-html')); if(v) el.innerHTML=v; });
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-ph')); if(v) el.placeholder=v; });
   const lb=document.getElementById('langBtn'); if(lb){ lb.textContent = lang==='en'?'ES':'EN'; lb.title = lang==='en'?'Cambiar a español':'Switch to English'; }
+  buildLessonOptions();   // relocalize the lesson dropdown (preserves the current selection)
 }
 function toggleLang(){
   lang = lang==='en'?'es':'en'; localStorage.setItem('st_lang',lang); applyLang();
@@ -257,26 +258,33 @@ function toggleLang(){
 
 /* ============ DEMO LESSONS (curated sample set) ============ */
 const DEMO_LESSONS = [
-  { grade:'3', subject:'Math', domain:'Fractions', std:'CCSS 3.NF', title:'Understanding Fractions',
+  { grade:'3', subject:'Math', subjectEs:'Matemáticas', domain:'Fractions', std:'CCSS 3.NF', title:'Understanding Fractions', titleEs:'Comprender las Fracciones',
     objectives:['Understand a fraction as equal parts of a whole','Place fractions on a number line','Recognize equivalent fractions like 1/2 = 2/4'],
     explain:'A fraction names equal parts of a whole. The bottom number (denominator) says how many equal parts the whole is split into; the top number (numerator) says how many parts you have.',
     example:'A pizza cut into 4 equal slices: each slice is 1/4. If you eat 2 slices, you have eaten 2/4, which is the same as 1/2 of the pizza.' },
-  { grade:'5', subject:'English Language Arts', domain:'Reading: Informational Text', std:'CCSS RI.5.2', title:'Main Idea & Supporting Details',
+  { grade:'5', subject:'English Language Arts', subjectEs:'Lengua y Literatura', domain:'Reading: Informational Text', std:'CCSS RI.5.2', title:'Main Idea & Supporting Details', titleEs:'Idea Principal y Detalles de Apoyo',
     objectives:['Identify the main idea of a passage','Find details that support the main idea','Summarize a text in your own words'],
     explain:'The main idea is what a passage is mostly about. Supporting details are the facts, examples, and reasons that tell you more about that main idea.',
     example:'A paragraph about how bees help plants: the main idea is "bees are important for plants," and details like "bees carry pollen flower to flower" support it.' },
-  { grade:'8', subject:'Math', domain:'Geometry', std:'CCSS 8.G.7', title:'The Pythagorean Theorem',
+  { grade:'8', subject:'Math', subjectEs:'Matemáticas', domain:'Geometry', std:'CCSS 8.G.7', title:'The Pythagorean Theorem', titleEs:'El Teorema de Pitágoras',
     objectives:['Understand a² + b² = c² for right triangles','Identify the hypotenuse','Use the theorem to find a missing side'],
     explain:'In a right triangle, the square of the longest side (the hypotenuse, opposite the right angle) equals the sum of the squares of the other two sides: a² + b² = c².',
     example:'A right triangle with legs 3 and 4: 3² + 4² = 9 + 16 = 25, so the hypotenuse is √25 = 5.' },
-  { grade:'4', subject:'Science', domain:'Physical Science — Energy', std:'NGSS 4-PS3', title:'Forces and Motion',
+  { grade:'4', subject:'Science', subjectEs:'Ciencias', domain:'Physical Science — Energy', std:'NGSS 4-PS3', title:'Forces and Motion', titleEs:'Fuerzas y Movimiento',
     objectives:['Describe how forces change motion','Relate speed to energy','Predict what happens when forces are balanced or unbalanced'],
     explain:'A force is a push or a pull. Forces can start motion, stop it, speed it up, slow it down, or change its direction. A faster-moving object carries more energy.',
     example:'Kicking a soccer ball: your foot applies a force that sends it moving. Kick harder (more force) and it moves faster and carries more energy.' },
 ];
 function buildLessonOptions(){
-  const sel = document.getElementById('lessonSel');
-  sel.innerHTML = DEMO_LESSONS.map((l,i)=>`<option value="${i}">Grade ${l.grade} · ${l.subject} — ${l.title}</option>`).join('');
+  const sel = document.getElementById('lessonSel'); if(!sel) return;
+  const cur = sel.value;
+  const g = lang==='es'?'Grado':'Grade';
+  sel.innerHTML = DEMO_LESSONS.map((l,i)=>{
+    const subj = lang==='es'?(l.subjectEs||l.subject):l.subject;
+    const title = lang==='es'?(l.titleEs||l.title):l.title;
+    return `<option value="${i}">${g} ${l.grade} · ${subj} — ${title}</option>`;
+  }).join('');
+  if(cur) sel.value = cur;
 }
 
 /* ============ STATE + TUTOR ============ */
@@ -291,7 +299,7 @@ function startSession(){
   state.messages = [];
   document.getElementById('msgs').innerHTML='';
   const greeting = lang==='es'
-    ? `¡Hola! Soy tu tutor de Skool Tutors. Hoy vemos "${l.title}" (Grado ${l.grade} ${l.subject}). Te guiaré con preguntas en vez de darte las respuestas. ¿Quieres una breve explicación o probamos juntos un problema de práctica?`
+    ? `¡Hola! Soy tu tutor de Skool Tutors. Hoy vemos "${l.titleEs||l.title}" (Grado ${l.grade} ${l.subjectEs||l.subject}). Te guiaré con preguntas en vez de darte las respuestas. ¿Quieres una breve explicación o probamos juntos un problema de práctica?`
     : `Hi! I'm your Skool Tutors tutor. Today we're on "${l.title}" (Grade ${l.grade} ${l.subject}). I'll guide you with questions instead of just giving answers. Want a quick lesson, or shall we try a practice problem together?`;
   addMsg('bot', greeting, {silent:true});
   voiceWelcome();
