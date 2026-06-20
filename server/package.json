@@ -1,0 +1,15 @@
+{
+  "name": "skooltutors-demo",
+  "version": "1.0.0",
+  "description": "Skool Tutors — gated live demo (two-way verbal tutor + bilingual parent agent) for school administrators, alternative schools, and after-school programs. Built on the HomeSkool tutoring engine.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

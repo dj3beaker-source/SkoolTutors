@@ -1,0 +1,19 @@
+# Secrets — live in the host's Variables / a local .env, never committed.
+.env
+**/.env
+*.key
+*.pem
+!.env.example
+!**/.env.example
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Logs / OS cruft
+*.log
+**/*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
