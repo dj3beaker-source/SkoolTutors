@@ -135,9 +135,9 @@
       <div class="chat">
         <div class="msgs" id="paMsgs"></div>
         <div class="chat-in">
-          <button class="iconbtn" id="paCallBtn" title="Start a voice call">📞</button>
-          <input type="text" id="paIn" data-i18n-ph="b.ph" placeholder="Type a question for the parent agent…" onkeydown="if(event.key==='Enter'){window.paSend&&window.paSend()}">
-          <button class="btn btn-primary btn-sm" id="paSendBtn" onclick="window.paSend&&window.paSend()" data-i18n="btn.send">Send</button>
+          <button class="iconbtn" id="paCallBtn" title="Start a voice call" onclick="paToggleCall()">📞</button>
+          <input type="text" id="paIn" data-i18n-ph="b.ph" placeholder="Type a question for the parent agent…" oninput="paVoiceMode=false" onkeydown="if(event.key==='Enter'){paSend()}">
+          <button class="btn btn-primary btn-sm" id="paSendBtn" onclick="paSend()" data-i18n="btn.send">Send</button>
         </div>
       </div>
       <div id="paStatus" style="margin-top:8px;font-size:12.5px;color:var(--muted);text-align:center" data-i18n="b.status0">Tap 📞 to start a voice call, or just type a question to begin.</div>
@@ -384,80 +384,83 @@ function initRec(){
   rec.onerror=(e)=>{ listening=false; updateMicBtn(); if(e.error==='not-allowed') addMsg('sys', lang==='es'?'Micrófono bloqueado — permite el acceso para hablar con el tutor.':'Microphone blocked — allow mic access to speak to the tutor.'); };
   rec.onend=()=>{ listening=false; updateMicBtn(); };
 }
-function toggleMic(){ if(!SpeechRec) return; if(listening){rec.stop();return;} if(!rec)initRec(); voiceMode=true; stopSpeaking(); document.getElementById('chatIn').value=''; try{rec.start();}catch(_){}}
+function toggleMic(){ if(!SpeechRec) return; if(listening){rec.stop();return;} if(!rec)initRec(); voiceMode=true; if(typeof paVoiceMode!=='undefined'&&paVoiceMode){paVoiceMode=false; if(paListening&&paRec){try{paRec.stop();}catch(e){}} if(paAudio){try{paAudio.pause();}catch(e){}paAudio=null;} paUpdateCall();} stopSpeaking(); document.getElementById('chatIn').value=''; try{rec.start();}catch(_){}}
 function updateMicBtn(){ const b=document.getElementById('micBtn'); if(!b) return; if(!SpeechRec){ b.style.display='none'; return; } b.classList.toggle('listening',listening); b.textContent=listening?'⏺':'🎤'; document.getElementById('chatIn').placeholder=listening?(lang==='es'?'Escuchando…':'Listening…'):(lang==='es'?'Escribe tu respuesta o pregunta…':'Type your answer or question…'); }
 
 /* ---- Voice-first welcome: speak a prompt + open the mic so kids who can't read can talk ---- */
 function primeMic(){ try{ if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){ navigator.mediaDevices.getUserMedia({audio:true}).then(s=>s.getTracks().forEach(t=>t.stop())).catch(()=>{}); } }catch(_){} }
 function beginListen(){ if(!SpeechRec||listening) return; if(!rec)initRec(); document.getElementById('chatIn').value=''; try{rec.start();}catch(_){} }
-function maybeAutoListen(){ if(!voiceMode||!SpeechRec||!state.tutorCtx) return; beginListen(); }
+function maybeAutoListen(){ if(!voiceMode||!SpeechRec||!state.tutorCtx) return; if(paVoiceMode) return; beginListen(); }
 function voiceWelcome(){ state.voiceOn=true; const vb=document.getElementById('voiceBtn'); if(vb) vb.textContent='🔊'; voiceMode=true; primeMic(); addMsg('bot', lang==='es'?'Por favor, hazme una pregunta sobre un tema escolar.':'Please ask me a question about a school topic.'); }
+
+/* ============ PARENT ASSISTANT — Claude-powered (same engine as the tutor) ============
+   Explains the topic TO THE PARENT (plain language, gives answers + how-to-help tips),
+   universal across topics with guardrails, bilingual via the toggle, talk-or-type. */
+let paMessages=[], paAudio=null, paRec=null, paListening=false, paVoiceMode=false;
+function paStatus(t){ const e=document.getElementById('paStatus'); if(e) e.textContent=t; }
+function buildParentSystem(){
+  const c = state.tutorCtx || {};
+  const ctxLine = c.lessonTitle
+    ? `The child's current lesson is "${c.lessonTitle}" (Grade ${c.grade} ${c.subject}; topic: ${c.domain}). Key idea: ${c.explain} Worked example: ${c.example}`
+    : `No specific lesson is selected — help with whatever school topic the parent asks about.`;
+  return `You are the Skool Tutors Parent Assistant — a warm, patient guide that helps a PARENT or caregiver understand a school topic so they can help their child at home. You speak to an ADULT, not the child.
+${ctxLine}
+How you help:
+- Explain clearly in plain, everyday language. UNLIKE a student tutor, you SHOULD give the parent direct explanations, worked examples, and the answer — the parent needs to understand it themselves.
+- If the parent doesn't understand the topic, teach it to them step by step with a simple analogy and one worked example.
+- Then give 1-2 concrete tips for helping their child with this at home.
+- Keep replies short and conversational — 2 to 4 sentences — easy to listen to; then offer to go deeper or give another example.
+- You can help with ANY K-12 subject and with how to support a child's learning. If asked about something unrelated to school or parenting support, gently steer back.
+- LANGUAGE: Respond ENTIRELY in ${lang==='es'?'Spanish (español), warm and natural':'English'}.`;
+}
+function paAddMsg(role,text){
+  paMessages.push({role,text});
+  const box=document.getElementById('paMsgs'); if(!box) return;
+  const m=document.createElement('div'); m.className='msg '+(role==='user'?'user':'bot'); m.textContent=text; box.appendChild(m); box.scrollTop=box.scrollHeight;
+  if(role==='bot') paSpeak(text);
+}
+async function paLiveTutor(){
+  paStatus(lang==='es'?'Pensando…':'Thinking…');
+  const msgs=paMessages.filter(m=>m.role==='user'||m.role==='bot').map(m=>({role:m.role==='bot'?'assistant':'user',content:m.text}));
+  try{
+    const res=await fetch('/api/tutor',{method:'POST',headers:apiHeaders(),body:JSON.stringify({system:buildParentSystem(),messages:msgs})});
+    const data=await res.json();
+    if(!res.ok||data.error){ paStatus('⚠ '+((data.error&&(data.error.message||data.error))||('Error '+res.status))); return; }
+    paStatus(''); paAddMsg('bot',(data.content&&data.content[0]&&data.content[0].text)||'(no response)');
+  }catch(e){ paStatus('⚠ '+(lang==='es'?'No se pudo contactar al asistente.':'Couldn’t reach the assistant.')); }
+}
+function paSend(){ const inp=document.getElementById('paIn'); const text=(inp.value||'').trim(); if(!text) return; inp.value=''; paAddMsg('user',text); paLiveTutor(); }
+window.paSend=paSend;
+async function paSpeak(text){
+  if(paAudio){ try{paAudio.pause();}catch(e){} paAudio=null; }
+  const clean=speakable(text);
+  if(BACKEND.ttsProxy){
+    try{ const res=await fetch('/api/tts',{method:'POST',headers:apiHeaders(),body:JSON.stringify({text:clean,grade:'high'})});
+      if(res.ok){ const url=URL.createObjectURL(await res.blob()); paAudio=new Audio(url); paAudio.onended=()=>{URL.revokeObjectURL(url);paAudio=null;paMaybeListen();}; await paAudio.play(); return; } }catch(e){}
+  }
+  if(window.speechSynthesis){ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(clean); u.lang=lang==='es'?'es-ES':'en-US'; u.onend=()=>paMaybeListen(); speechSynthesis.speak(u); }
+}
+function paInitRec(){
+  paRec=new SpeechRec(); paRec.interimResults=true; paRec.continuous=false;
+  paRec.onstart=()=>{paListening=true;paUpdateCall();};
+  paRec.onresult=(e)=>{ const inp=document.getElementById('paIn'); let fin='',int=''; for(const r of e.results){ if(r.isFinal)fin+=r[0].transcript; else int+=r[0].transcript; } inp.value=(fin+int).trim(); if(fin.trim()){ paRec.stop(); paSend(); } };
+  paRec.onerror=()=>{ paListening=false; paUpdateCall(); };
+  paRec.onend=()=>{ paListening=false; paUpdateCall(); };
+}
+function paBeginListen(){ if(!SpeechRec||paListening) return; if(!paRec)paInitRec(); paRec.lang=lang==='es'?'es-ES':'en-US'; const inp=document.getElementById('paIn'); if(inp) inp.value=''; try{paRec.start();}catch(_){} }
+function paMaybeListen(){ if(paVoiceMode && SpeechRec) paBeginListen(); }
+function paUpdateCall(){ const b=document.getElementById('paCallBtn'); if(!b) return; b.textContent=paVoiceMode?'⏹':'📞'; b.classList.toggle('listening',paListening); }
+function paToggleCall(){
+  if(paVoiceMode){ paVoiceMode=false; if(paListening&&paRec){try{paRec.stop();}catch(e){}} if(paAudio){try{paAudio.pause();}catch(e){}paAudio=null;} paUpdateCall(); paStatus(lang==='es'?'Llamada finalizada. Toca 📞 para empezar.':'Call ended. Tap 📞 to start.'); return; }
+  if(!SpeechRec){ paStatus(lang==='es'?'Este navegador no puede usar el micrófono; escribe tu pregunta.':'This browser can’t use the mic; type your question.'); return; }
+  voiceMode=false; if(listening&&rec){try{rec.stop();}catch(e){}}   // stop the student tutor loop
+  paVoiceMode=true; primeMic(); paUpdateCall();
+  paStatus(lang==='es'?'🎤 Escuchando — hazme una pregunta sobre la lección.':'🎤 Listening — ask me about the lesson.');
+  paBeginListen();
+}
 
 boot();
 </script>
 
-<!-- Integrated Parent Agent: transcript + voice + typing via the ElevenLabs ConvAI SDK.
-     Connects with a server-minted signed URL (key-authorized, domain-independent);
-     falls back to the public agentId (which then relies on the agent's allowed domains). -->
-<script type="module">
-let Conversation = null;
-try { ({ Conversation } = await import('https://esm.sh/@elevenlabs/client')); }
-catch (e) { console.error('ConvAI SDK failed to load', e); }
-
-let convo = null, connecting = false, lastRole = null;
-const pending = [];
-const byId = id => document.getElementById(id);
-const setStatus = t => { const e = byId('paStatus'); if (e) e.textContent = t; };
-function add(role, text){
-  const box = byId('paMsgs'); if (!box || !text) return;
-  // Collapse consecutive same-role messages into one bubble (handles tentative→final transcripts).
-  if (lastRole === role && box.lastElementChild) box.lastElementChild.textContent = text;
-  else { const m = document.createElement('div'); m.className = 'msg ' + (role === 'user' ? 'user' : 'bot'); m.textContent = text; box.appendChild(m); }
-  lastRole = role; box.scrollTop = box.scrollHeight;
-}
-function ctxVars(){
-  const c = (window.skoolState && window.skoolState.tutorCtx) || {};
-  return { audience:'parent', grade:c.grade||'', subject:c.subject||'', topic:c.lessonTitle||c.domain||'', language:(window.ST_LANG==='es'?'Spanish':'English') };
-}
-const L = (en, es) => (window.ST_LANG === 'es' ? es : en);
-const demoToken = () => sessionStorage.getItem('st_code') || '';
-function updateCallBtn(){ const b = byId('paCallBtn'); if (!b) return; b.textContent = convo ? '⏹' : '📞'; b.title = convo ? 'End call' : 'Start a voice call'; b.classList.toggle('listening', !!convo); }
-async function getSignedUrl(){
-  try { const r = await fetch('/api/convai-signed-url', { headers: demoToken() ? { 'x-demo-token': demoToken() } : {} }); const d = await r.json(); return d.signedUrl || null; }
-  catch (e) { return null; }
-}
-function send(text){ if (!convo) return; if (typeof convo.sendUserMessage === 'function') convo.sendUserMessage(text); else if (typeof convo.sendText === 'function') convo.sendText(text); }
-function flush(){ while (convo && pending.length) send(pending.shift()); }
-async function startCall(){
-  if (convo || connecting) return;
-  if (!Conversation) { setStatus(L('Voice library failed to load — refresh and try again.','No se cargó la biblioteca de voz — recarga e inténtalo de nuevo.')); return; }
-  connecting = true; setStatus(L('Connecting…','Conectando…'));
-  try {
-    const signedUrl = await getSignedUrl();
-    const opts = {
-      dynamicVariables: ctxVars(),
-      onConnect: () => { setStatus(L('Connected — talk out loud, or type below.','Conectado — habla en voz alta o escribe abajo.')); flush(); },
-      onDisconnect: () => { setStatus(L('Call ended. Tap 📞 to start again.','Llamada finalizada. Toca 📞 para empezar de nuevo.')); convo = null; lastRole = null; updateCallBtn(); },
-      onError: (e) => setStatus('Error: ' + ((e && (e.message || e)) || 'connection failed')),
-      onModeChange: (m) => { const mode = m && (m.mode || m); setStatus(mode === 'speaking' ? L('🔊 Speaking…','🔊 Hablando…') : L('🎤 Listening…','🎤 Escuchando…')); },
-      onMessage: (m) => { const src = (m && (m.source || m.role)) || 'ai'; const text = (m && (m.message || m.text)) || ''; if (text) add(src === 'user' ? 'user' : 'ai', text); },
-    };
-    convo = signedUrl
-      ? await Conversation.startSession({ signedUrl, ...opts })
-      : await Conversation.startSession({ agentId: window.PARENT_AGENT_ID || '', ...opts });
-    updateCallBtn(); flush();
-  } catch (e) {
-    setStatus(L('Could not start — allow your mic and try again.','No se pudo iniciar — permite el micrófono e inténtalo de nuevo.') + ' (' + ((e && e.message) || e) + ')');
-    convo = null; updateCallBtn();
-  } finally { connecting = false; }
-}
-async function endCall(){ if (convo) { try { await convo.endSession(); } catch (e) {} convo = null; setStatus('Call ended.'); updateCallBtn(); } }
-window.paSend = function(){
-  const inp = byId('paIn'); const text = (inp.value || '').trim(); if (!text) return;
-  inp.value = ''; add('user', text); pending.push(text);
-  if (convo) flush(); else startCall();
-};
-const cb = byId('paCallBtn'); if (cb) cb.addEventListener('click', () => { convo ? endCall() : startCall(); });
-</script>
 </body>
 </html>
