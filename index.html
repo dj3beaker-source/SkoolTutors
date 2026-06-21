@@ -74,6 +74,7 @@
   .gate-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px;max-width:420px;width:100%;text-align:center}
   .gate-card h2{margin:0 0 6px}.gate-card p{color:var(--muted);font-size:14.5px;margin:0 0 16px}
   .gate-card input{width:100%;text-align:center;letter-spacing:1px;margin-bottom:12px}
+  .gate-card .req-in{text-align:left;letter-spacing:normal;margin-bottom:8px}
   .gate-err{color:#ffc2cc;font-size:13.5px;min-height:18px;margin-top:8px}
   .locked{filter:blur(5px);pointer-events:none;user-select:none}
   /* inline video the agent surfaces */
@@ -169,6 +170,18 @@
     <input type="text" id="gateCode" data-i18n-ph="gate.ph" placeholder="Access code" onkeydown="if(event.key==='Enter')submitGate()" autocomplete="off">
     <button class="btn btn-primary" style="width:100%" onclick="submitGate()" data-i18n="gate.btn">Unlock demo</button>
     <div class="gate-err" id="gateErr"></div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      <button id="reqToggle" class="btn btn-ghost btn-sm" onclick="toggleRequest()" data-i18n="gate.req">Don't have a code? Request one →</button>
+      <div id="reqForm" style="display:none;text-align:left">
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px" data-i18n="gate.reqSub">Tell us where you're from and we'll email you a demo code.</p>
+        <input class="req-in" id="reqName" data-i18n-ph="req.name" placeholder="Your name">
+        <input class="req-in" id="reqEmail" type="email" data-i18n-ph="req.email" placeholder="Work email">
+        <input class="req-in" id="reqOrg" data-i18n-ph="req.org" placeholder="School / district / program">
+        <input id="reqHp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
+        <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="submitRequest()" data-i18n="req.send">Email me a demo code</button>
+        <div class="gate-err" id="reqMsg"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -197,6 +210,23 @@ async function submitGate(){
     else { err.textContent = d.error || (lang==='es'?'Código incorrecto.':'Incorrect code.'); }
   }catch(e){ err.textContent=lang==='es'?'No se pudo contactar al servidor.':'Could not reach the server.'; }
 }
+function toggleRequest(){
+  const f=document.getElementById('reqForm'), t=document.getElementById('reqToggle');
+  const show=(f.style.display==='none'||!f.style.display); f.style.display=show?'block':'none'; t.style.display=show?'none':'block';
+}
+async function submitRequest(){
+  const v=id=>(document.getElementById(id).value||'').trim();
+  const name=v('reqName'), email=v('reqEmail'), org=v('reqOrg'), website=v('reqHp');
+  const msg=document.getElementById('reqMsg'); msg.style.color='';
+  if(!name||!org||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent=(lang==='es'?'Agrega tu nombre, un correo válido y tu escuela.':'Add your name, a valid email, and your school.'); return; }
+  msg.textContent=(lang==='es'?'Enviando…':'Sending…');
+  try{
+    const r=await fetch('/request-demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,email,org,website})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){ msg.style.color='#aef0db'; msg.textContent=(lang==='es'?'¡Listo! Revisa tu correo para el código de acceso.':'Sent! Check your email for the access code.'); }
+    else{ msg.textContent=d.error||(lang==='es'?'Algo salió mal.':'Something went wrong.'); }
+  }catch(e){ msg.textContent=(lang==='es'?'No se pudo contactar al servidor.':'Could not reach the server.'); }
+}
 // On reload after a verified session, restore the code for the API headers.
 if(DEMO_TOKEN==='verified') DEMO_TOKEN = sessionStorage.getItem('st_code') || '';
 function apiHeaders(extra){ return Object.assign({'content-type':'application/json'}, DEMO_TOKEN?{'x-demo-token':DEMO_TOKEN}:{}, extra||{}); }
@@ -222,7 +252,7 @@ const UI = {
     "cta.body":"Standards-aligned, bilingual, and customizable to your district, alternative school, or after-school program. Let's set up a pilot.",
     "cta.btn":"Request a pilot &amp; quote →",
     "footer":"© 2026 Skool Tutors · Built on the HomeSkool tutoring engine · Aligned to Common Core, NGSS &amp; the C3 Framework.<br>An independent product; not endorsed by the standards' authors.",
-    "gate.title":"🔒 Demo access","gate.sub":"Enter the access code to start the live Skool Tutors demo.","gate.ph":"Access code","gate.btn":"Unlock demo",
+    "gate.title":"🔒 Demo access","gate.sub":"Enter the access code to start the live Skool Tutors demo.","gate.ph":"Access code","gate.btn":"Unlock demo","gate.req":"Don't have a code? Request one →","gate.reqSub":"Tell us where you're from and we'll email you a demo access code.","req.name":"Your name","req.email":"Work email","req.org":"School / district / program","req.send":"Email me a demo code",
   },
   es:{
     "nav.pilot":"Solicitar un piloto",
@@ -241,7 +271,7 @@ const UI = {
     "cta.body":"Alineado a los estándares, bilingüe y personalizable para tu distrito, escuela alternativa o programa extraescolar. Organicemos un piloto.",
     "cta.btn":"Solicitar un piloto y cotización →",
     "footer":"© 2026 Skool Tutors · Desarrollado sobre el motor de tutoría de HomeSkool · Alineado con Common Core, NGSS y el Marco C3.<br>Un producto independiente; sin respaldo de los autores de los estándares.",
-    "gate.title":"🔒 Acceso a la demo","gate.sub":"Ingresa el código de acceso para iniciar la demo en vivo de Skool Tutors.","gate.ph":"Código de acceso","gate.btn":"Desbloquear demo",
+    "gate.title":"🔒 Acceso a la demo","gate.sub":"Ingresa el código de acceso para iniciar la demo en vivo de Skool Tutors.","gate.ph":"Código de acceso","gate.btn":"Desbloquear demo","gate.req":"¿No tienes código? Solicita uno →","gate.reqSub":"Dinos de dónde eres y te enviaremos un código de acceso por correo.","req.name":"Tu nombre","req.email":"Correo de trabajo","req.org":"Escuela / distrito / programa","req.send":"Envíenme un código",
   }
 };
 function t(k){ return (UI[lang]&&UI[lang][k]) || UI.en[k] || ''; }
