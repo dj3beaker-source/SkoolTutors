@@ -10,8 +10,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns';
 import dotenv from 'dotenv';
-import { initDb, saveDemoRequest } from './db.js';
-import { sendDemoAccess, mailEnabled } from './mailer.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Load server/.env no matter the working directory (so `npm start` works from the repo
 // root too). On Railway there is no .env file — config comes from Railway Variables.
@@ -115,41 +113,9 @@ app.get('/api/convai-signed-url', requireDemo, rateLimit(60, 30 * 60000), async 
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Demo request: capture the lead (CRM) + email them the access code ───────
-const reqHits = new Map();
-const publicUrl = () => (/^https/.test(APP_URL) && !APP_URL.includes('localhost')) ? APP_URL : 'https://skooltutors.com';
-app.post('/request-demo', async (req, res) => {
-  try {
-    const b = req.body || {};
-    if (b.website) return res.json({ ok: true });              // honeypot
-    const name = String(b.name || '').trim();
-    const email = String(b.email || '').trim();
-    const org = String(b.org || '').trim();
-    if (!name || !org || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
-      return res.status(400).json({ error: 'Please include your name, a valid email, and your school/organization.' });
-    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-    const now = Date.now(), recent = (reqHits.get(ip) || []).filter(t => now - t < 3600e3);
-    if (recent.length >= 5) return res.status(429).json({ error: 'Too many requests — please email us directly.' });
-    recent.push(now); reqHits.set(ip, recent);
+// Demo-request emails + CRM are handled by HomeSkool's backend (which already has SMTP +
+// the database). The "request a demo" form posts to https://www.homeskooltutor.com/request-demo.
 
-    const lead = { name, email, org,
-      role: String(b.role || '').trim().slice(0, 120),
-      phone: String(b.phone || '').trim().slice(0, 60),
-      students: String(b.students || '').trim().slice(0, 60),
-      grades: String(b.grades || '').trim().slice(0, 120),
-      message: String(b.message || '').trim().slice(0, 4000),
-      code_sent: DEMO_CODE || '' };
-
-    try { await saveDemoRequest(lead); } catch (e) { console.error('CRM save failed:', e.message); }   // 1) CRM
-
-    if (!DEMO_CODE) return res.status(503).json({ error: 'Demo code not configured yet — please contact us.' });
-    if (!mailEnabled) { console.warn('Demo request saved but SMTP not configured:', email); return res.status(503).json({ error: "Saved — but email isn't set up yet, so we'll reach out directly." }); }
-    await sendDemoAccess(email, name, DEMO_CODE, publicUrl());                                        // 2) email the code
-    res.json({ ok: true });
-  } catch (err) { console.error('request-demo error:', err.message); res.status(500).json({ error: 'Something went wrong. Please try again or email us.' }); }
-});
-
-await initDb();
 await app.listen(PORT);
 console.log(`Skool Tutors demo running at ${APP_URL}`);
 console.log(`  • Demo:    ${APP_URL}/`);

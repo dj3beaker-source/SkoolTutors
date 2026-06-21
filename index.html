@@ -221,7 +221,7 @@ async function submitRequest(){
   if(!name||!org||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent=(lang==='es'?'Agrega tu nombre, un correo válido y tu escuela.':'Add your name, a valid email, and your school.'); return; }
   msg.textContent=(lang==='es'?'Enviando…':'Sending…');
   try{
-    const r=await fetch('/request-demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,email,org,website})});
+    const r=await fetch('https://www.homeskooltutor.com/request-demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,email,org,website})});
     const d=await r.json().catch(()=>({}));
     if(r.ok&&d.ok){ msg.style.color='#aef0db'; msg.textContent=(lang==='es'?'¡Listo! Revisa tu correo para el código de acceso.':'Sent! Check your email for the access code.'); }
     else{ msg.textContent=d.error||(lang==='es'?'Algo salió mal.':'Something went wrong.'); }
