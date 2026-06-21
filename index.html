@@ -110,8 +110,8 @@
   <!-- SALES VIDEO -->
   <section style="margin:18px 0 4px">
     <div style="max-width:760px;margin:0 auto;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#000;box-shadow:0 18px 50px rgba(0,0,0,.4)">
-      <video controls playsinline preload="metadata" poster="assets/sales-poster.jpg" style="display:block;width:100%;height:auto;background:#000">
-        <source src="assets/sales-video.mp4" type="video/mp4">
+      <video id="salesVideo" controls playsinline preload="metadata" poster="assets/sales-poster.jpg" style="display:block;width:100%;height:auto;background:#000">
+        <source id="salesSource" src="assets/sales-video.mp4" type="video/mp4">
       </video>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:13.5px;margin:12px auto 0;max-width:620px" data-i18n="vid.cap">See how the Parent Assistant supports families and frees up your teachers — then try it live below.</p>
@@ -292,6 +292,17 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-ph')); if(v) el.placeholder=v; });
   document.querySelectorAll('.lang-switch .opt').forEach(o=>o.classList.toggle('on', o.dataset.lang===lang));
   buildLessonOptions();   // relocalize the lesson dropdown (preserves the current selection)
+  applySalesVideo();      // the sales/marketing video follows the language
+}
+// Swap the top sales video to the Spanish cut when ES is picked (English otherwise).
+// As Spanish explainer videos are produced, add `.es.mp4` files and extend this logic.
+function applySalesVideo(){
+  const sv=document.getElementById('salesVideo'); if(!sv) return;
+  const want = lang==='es' ? 'assets/sales-video.es.mp4' : 'assets/sales-video.mp4';
+  if(sv.dataset.cur===want) return;        // already correct — don't interrupt playback
+  sv.dataset.cur=want;
+  const src=document.getElementById('salesSource'); if(src) src.src=want;
+  sv.load();
 }
 function setLang(newLang, regreet){
   if(newLang!==lang){
