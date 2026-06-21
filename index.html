@@ -363,8 +363,11 @@ function buildLessonOptions(){
 
 /* ============ Agent video surfacing — tutor shows the current lesson's video ([[VIDEO]]),
    parent can pull up ANY of these by topic ([[VIDEO:key]]). Real Skool Tutors lesson videos. */
+// Each lesson can carry a Spanish cut: add `youtube_es:"<spanish id>"` (and optionally
+// `title_es:"…"`) and it is used automatically when the slider is on ES, falling back to
+// the English `youtube`/`heygen` until the Spanish version exists. `heygen_es` works too.
 const DEMO_VIDEOS = {
-  "math-3-1": { youtube:"G0poMQDdGVM", title:"Understanding Fractions", label:"Grade 3 Math" },
+  "math-3-1": { youtube:"G0poMQDdGVM", /* youtube_es:"", title_es:"Comprender las fracciones", */ title:"Understanding Fractions", label:"Grade 3 Math" },
   "ela-4-1":  { youtube:"L6rdwgHhqcc", title:"Main Idea & Supporting Details", label:"Grade 4 ELA" },
   "math-8-2": { heygen:"https://resource2.heygen.ai/aws_pacific/avatar_tmp/08aa811943204f32be54eb59c75adf17/vf6bec8336c6b4940b89786450a8f0469/caption_9b5eea9b5257442ba25edefe2b8636c0.mp4", title:"The Pythagorean Theorem", label:"Grade 8 Math" },
   "science-3-0": { heygen:"https://resource2.heygen.ai/aws_pacific/avatar_tmp/08aa811943204f32be54eb59c75adf17/vcf9398e1ab2a4888928eb66fdc2d7dd1/caption_761184b8b77c46b78c20292546ea89e7.mp4", title:"Forces and Motion", label:"Grade 3 Science" },
@@ -381,17 +384,30 @@ function stripVideoMarks(s){ return (s||'').replace(VIDEO_MARK,'').replace(/[ \t
 function videoKeysIn(text,fallbackKey){ const ks=[]; let m; VIDEO_MARK.lastIndex=0; while((m=VIDEO_MARK.exec(text))) ks.push(m[1]||fallbackKey||null); return ks.filter(k=>k&&hasVideo(k)); }
 function availableVideoIndex(){ const o=[]; for(const k in DEMO_VIDEOS) if(hasVideo(k)) o.push(`${k}: ${DEMO_VIDEOS[k].title} (${DEMO_VIDEOS[k].label})`); return o; }
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+// Resolve the language-appropriate cut. On ES, prefer youtube_es / heygen_es / title_es
+// when present; otherwise fall back to the English video so something always plays.
+function videoSrcFor(v){
+  if(!v) return null;
+  const es = (lang==='es');
+  const title = (es && v.title_es) || v.title || '';
+  const yt = (es && v.youtube_es) ? v.youtube_es : v.youtube;
+  if(yt) return { youtube:yt, title };
+  const hg = (es && v.heygen_es) ? v.heygen_es : v.heygen;
+  if(hg) return { heygen:hg, title };
+  return null;
+}
 function appendVideoBubble(box,key){
   const v=DEMO_VIDEOS[key]; if(!v||!box) return;
+  const s=videoSrcFor(v); if(!s) return;
   const d=document.createElement('div'); d.className='video-embed';
-  d.innerHTML = v.youtube
-    ? `<iframe src="https://www.youtube.com/embed/${v.youtube}" title="${(v.title||'').replace(/"/g,'')}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
-    : `<video controls preload="metadata" src="${v.heygen}"></video>`;
+  d.innerHTML = s.youtube
+    ? `<iframe src="https://www.youtube.com/embed/${s.youtube}" title="${(s.title||'').replace(/"/g,'')}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+    : `<video controls preload="metadata" src="${s.heygen}"></video>`;
   box.appendChild(d);
-  const href = v.youtube ? `https://www.youtube.com/watch?v=${v.youtube}` : v.heygen;
+  const href = s.youtube ? `https://www.youtube.com/watch?v=${s.youtube}` : s.heygen;
   const a=document.createElement('a'); a.href=href; a.target='_blank'; a.rel='noopener';
   a.style.cssText='color:var(--brand);font-size:13px;display:block;margin:4px 0;text-decoration:none';
-  a.innerHTML = `▶ Watch: ${escapeHtml(v.title||'')} ↗`;
+  a.innerHTML = `▶ Watch: ${escapeHtml(s.title||'')} ↗`;
   box.appendChild(a);
   box.scrollTop=box.scrollHeight;
 }
