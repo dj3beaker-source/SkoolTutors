@@ -24,6 +24,9 @@
   .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
   .btn-sm{padding:8px 14px;font-size:13px;border-radius:10px}
   .btn:disabled{opacity:.5;cursor:not-allowed}
+  .lang-switch{display:inline-flex;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:2px;cursor:pointer;user-select:none;font-weight:700;font-size:11.5px;line-height:1;vertical-align:middle}
+  .lang-switch .opt{padding:5px 11px;border-radius:999px;color:var(--muted);transition:background .15s,color .15s}
+  .lang-switch .opt.on{background:linear-gradient(135deg,#6c8cff,#9b6cff);color:#fff}
   /* NAV */
   nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:rgba(15,18,32,.72);border-bottom:1px solid var(--line)}
   .nav-in{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:1100px;margin:0 auto;padding:0 22px}
@@ -87,7 +90,7 @@
 <nav><div class="nav-in">
   <div class="logo"><span class="mark">🎓</span> Skool Tutors</div>
   <div style="display:flex;gap:10px;align-items:center">
-    <button class="btn btn-ghost btn-sm" id="langBtn" onclick="toggleLang()" title="Cambiar a español">ES</button>
+    <span class="lang-switch" onclick="toggleLang()" title="English / Español" role="button" tabindex="0"><span class="opt" data-lang="en">EN</span><span class="opt" data-lang="es">ES</span></span>
     <a class="btn btn-primary btn-sm" href="#pilot" data-i18n="nav.pilot">Request a pilot</a>
   </div>
 </div></nav>
@@ -153,7 +156,7 @@
   <section class="cta" id="pilot">
     <h3 data-i18n="cta.title">Bring Skool Tutors to your students</h3>
     <p data-i18n="cta.body">Standards-aligned, bilingual, and customizable to your district, alternative school, or after-school program. Let's set up a pilot.</p>
-    <a class="btn btn-primary" href="https://www.homeskooltutor.com/schools.html#contact" target="_blank" rel="noopener" data-i18n="cta.btn">Request a pilot &amp; quote →</a>
+    <button class="btn btn-primary" onclick="openDemoRequest()" data-i18n="cta.btn">Request a demo →</button>
   </section>
 </main>
 
@@ -214,6 +217,13 @@ function toggleRequest(){
   const f=document.getElementById('reqForm'), t=document.getElementById('reqToggle');
   const show=(f.style.display==='none'||!f.style.display); f.style.display=show?'block':'none'; t.style.display=show?'none':'block';
 }
+// Bottom CTA: open the in-page demo-request form (reveal the gate if hidden, show the form, focus it).
+function openDemoRequest(){
+  const g=document.getElementById('gate'); if(g) g.style.display='grid';
+  const f=document.getElementById('reqForm');
+  if(f && (f.style.display==='none'||!f.style.display)) toggleRequest();
+  const n=document.getElementById('reqName'); if(n) try{ n.focus(); }catch(_){}
+}
 async function submitRequest(){
   const v=id=>(document.getElementById(id).value||'').trim();
   const name=v('reqName'), email=v('reqEmail'), org=v('reqOrg'), website=v('reqHp');
@@ -250,9 +260,9 @@ const UI = {
     "b.ph":"Type a question for the parent agent…","b.status0":"Tap 📞 to start a voice call, or just type a question to begin.",
     "cta.title":"Bring Skool Tutors to your students",
     "cta.body":"Standards-aligned, bilingual, and customizable to your district, alternative school, or after-school program. Let's set up a pilot.",
-    "cta.btn":"Request a pilot &amp; quote →",
+    "cta.btn":"Request a demo →",
     "footer":"© 2026 Skool Tutors · Built on the HomeSkool tutoring engine · Aligned to Common Core, NGSS &amp; the C3 Framework.<br>An independent product; not endorsed by the standards' authors.",
-    "gate.title":"🔒 Demo access","gate.sub":"Enter the access code to start the live Skool Tutors demo.","gate.ph":"Access code","gate.btn":"Unlock demo","gate.req":"Don't have a code? Request one →","gate.reqSub":"Tell us where you're from and we'll email you a demo access code.","req.name":"Your name","req.email":"Work email","req.org":"School / district / program","req.send":"Email me a demo code",
+    "gate.title":"🔒 Demo access","gate.sub":"Enter the access code to start the live Skool Tutors demo.","gate.ph":"Access code","gate.btn":"Unlock demo","gate.req":"Don't have a code? Request a demo →","gate.reqSub":"Tell us where you're from and we'll email you a demo access code.","req.name":"Your name","req.email":"Work email","req.org":"School / district / program","req.send":"Email me a demo code",
   },
   es:{
     "nav.pilot":"Solicitar un piloto",
@@ -269,9 +279,9 @@ const UI = {
     "b.ph":"Escribe una pregunta para el asistente…","b.status0":"Toca 📞 para iniciar una llamada de voz, o escribe una pregunta para empezar.",
     "cta.title":"Lleva Skool Tutors a tus estudiantes",
     "cta.body":"Alineado a los estándares, bilingüe y personalizable para tu distrito, escuela alternativa o programa extraescolar. Organicemos un piloto.",
-    "cta.btn":"Solicitar un piloto y cotización →",
+    "cta.btn":"Solicitar una demo →",
     "footer":"© 2026 Skool Tutors · Desarrollado sobre el motor de tutoría de HomeSkool · Alineado con Common Core, NGSS y el Marco C3.<br>Un producto independiente; sin respaldo de los autores de los estándares.",
-    "gate.title":"🔒 Acceso a la demo","gate.sub":"Ingresa el código de acceso para iniciar la demo en vivo de Skool Tutors.","gate.ph":"Código de acceso","gate.btn":"Desbloquear demo","gate.req":"¿No tienes código? Solicita uno →","gate.reqSub":"Dinos de dónde eres y te enviaremos un código de acceso por correo.","req.name":"Tu nombre","req.email":"Correo de trabajo","req.org":"Escuela / distrito / programa","req.send":"Envíenme un código",
+    "gate.title":"🔒 Acceso a la demo","gate.sub":"Ingresa el código de acceso para iniciar la demo en vivo de Skool Tutors.","gate.ph":"Código de acceso","gate.btn":"Desbloquear demo","gate.req":"¿No tienes código? Solicita una demo →","gate.reqSub":"Dinos de dónde eres y te enviaremos un código de acceso por correo.","req.name":"Tu nombre","req.email":"Correo de trabajo","req.org":"Escuela / distrito / programa","req.send":"Envíenme un código",
   }
 };
 function t(k){ return (UI[lang]&&UI[lang][k]) || UI.en[k] || ''; }
@@ -280,7 +290,7 @@ function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(el=>{ const v=t(el.getAttribute('data-i18n')); if(v) el.textContent=v; });
   document.querySelectorAll('[data-i18n-html]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-html')); if(v) el.innerHTML=v; });
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-ph')); if(v) el.placeholder=v; });
-  const lb=document.getElementById('langBtn'); if(lb){ lb.textContent = lang==='en'?'ES':'EN'; lb.title = lang==='en'?'Cambiar a español':'Switch to English'; }
+  document.querySelectorAll('.lang-switch .opt').forEach(o=>o.classList.toggle('on', o.dataset.lang===lang));
   buildLessonOptions();   // relocalize the lesson dropdown (preserves the current selection)
 }
 function setLang(newLang, regreet){
@@ -359,13 +369,20 @@ function hasVideo(key){ const v=DEMO_VIDEOS[key]; return !!(v&&(v.youtube||v.hey
 function stripVideoMarks(s){ return (s||'').replace(VIDEO_MARK,'').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(); }
 function videoKeysIn(text,fallbackKey){ const ks=[]; let m; VIDEO_MARK.lastIndex=0; while((m=VIDEO_MARK.exec(text))) ks.push(m[1]||fallbackKey||null); return ks.filter(k=>k&&hasVideo(k)); }
 function availableVideoIndex(){ const o=[]; for(const k in DEMO_VIDEOS) if(hasVideo(k)) o.push(`${k}: ${DEMO_VIDEOS[k].title} (${DEMO_VIDEOS[k].label})`); return o; }
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function appendVideoBubble(box,key){
   const v=DEMO_VIDEOS[key]; if(!v||!box) return;
   const d=document.createElement('div'); d.className='video-embed';
   d.innerHTML = v.youtube
     ? `<iframe src="https://www.youtube.com/embed/${v.youtube}" title="${(v.title||'').replace(/"/g,'')}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
     : `<video controls preload="metadata" src="${v.heygen}"></video>`;
-  box.appendChild(d); box.scrollTop=box.scrollHeight;
+  box.appendChild(d);
+  const href = v.youtube ? `https://www.youtube.com/watch?v=${v.youtube}` : v.heygen;
+  const a=document.createElement('a'); a.href=href; a.target='_blank'; a.rel='noopener';
+  a.style.cssText='color:var(--brand);font-size:13px;display:block;margin:4px 0;text-decoration:none';
+  a.innerHTML = `▶ Watch: ${escapeHtml(v.title||'')} ↗`;
+  box.appendChild(a);
+  box.scrollTop=box.scrollHeight;
 }
 
 /* ============ STATE + TUTOR ============ */
@@ -402,7 +419,7 @@ Rules:
 - Match vocabulary and tone to Grade ${ctx.grade}. Praise effort and reasoning, not just correctness; never be condescending.
 - STAY STRICTLY ON ACADEMIC SCHOOL TOPICS (Math, English/Reading & Writing, Science, Social Studies, study skills). If the student goes off-topic — games, social media, personal advice, gossip, jokes — gently decline in one sentence and steer back to the lesson. Never engage with the off-topic content itself.
 - If asked to just give the answer to copy, redirect to guiding them through it instead.${ctx.videoKey?`
-- SUPPORTING VIDEO: A short overview video for THIS lesson is available. If the student is confused, asks to see a video, or it would clearly help, display it by writing the tag [[VIDEO]] (exactly that, on its own line). The app turns the tag into a player. Introduce it first, e.g. "Here's a video that gives a quick overview of what we're working on:" then the tag. Use it sparingly — at most once unless they ask again, and never instead of guiding them.`:''}
+- SUPPORTING VIDEO: A short overview video for THIS lesson is available. If the student is confused, asks to see a video, or it would clearly help, display it by writing the tag [[VIDEO]] (exactly that, on its own line). The app turns the tag into a player and a clickable link. Introduce it first, e.g. "Here's a video that gives a quick overview of what we're working on:" then the tag. CRITICAL: Whenever you offer, mention, or refer to a video, you MUST emit the exact literal tag [[VIDEO]] — never describe a video in words without including the tag. Never write out a URL or say "watch the video" without the tag. Use it sparingly — at most once unless they ask again, and never instead of guiding them.`:''}
 - LANGUAGE: Respond ENTIRELY in ${lang==='es'?'Spanish (español), using natural, warm, grade-appropriate Spanish':'English'}. Keep all explanations, questions, and praise in that language${lang==='es'?'. If the student replies in English, you may gently continue in Spanish unless they ask to switch.':''}`;
 }
 
@@ -498,7 +515,7 @@ How you help:
 - Then give 1-2 concrete tips for helping their child with this at home.
 - Keep replies short and conversational — 2 to 4 sentences — easy to listen to; then offer to go deeper or give another example.
 - You can help with ANY K-12 subject and with how to support a child's learning. If asked about something unrelated to school or parenting support, gently steer back.
-- SUPPORTING VIDEOS: Skool Tutors has short lesson videos. You may show the parent ONE by writing the tag [[VIDEO:<key>]] using the EXACT key from the list below that best matches the topic the parent is teaching. Introduce it first, e.g. "Here's a video that walks through this:" then the tag. Only when it genuinely helps. Available videos (key: title):
+- SUPPORTING VIDEOS: Skool Tutors has short lesson videos. You may show the parent ONE by writing the tag [[VIDEO:<key>]] using the EXACT key from the list below that best matches the topic the parent is teaching. The app turns the tag into a player and a clickable link. Introduce it first, e.g. "Here's a video that walks through this:" then the tag. CRITICAL: Whenever you offer, mention, or refer to a video, you MUST emit the exact literal tag [[VIDEO:<key>]] with a valid key from the list — never describe a video in words, and never write out a URL or say "watch the video" without including the tag. Only when it genuinely helps. Available videos (key: title):
 ${availableVideoIndex().join('\n')}
 - LANGUAGE: Respond ENTIRELY in ${lang==='es'?'Spanish (español), warm and natural':'English'}.`;
 }
