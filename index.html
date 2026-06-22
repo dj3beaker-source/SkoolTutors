@@ -315,13 +315,17 @@ function setLang(newLang, regreet){
   }
   if(regreet && state.tutorCtx) startSession();   // manual toggle re-greets to show the swap live
 }
-function toggleLang(){ setLang(lang==='en'?'es':'en', true); }
+function toggleLang(){ langPinned=true; setLang(lang==='en'?'es':'en', true); }
 /* Auto-detect the language a person is typing/speaking and switch the whole experience. */
-function detectLang(text){
+function explicitLangRequest(text){
   const s=(text||'').toLowerCase().trim(); if(!s) return null;
-  // explicit requests ("I don't speak Spanish", "no habla inglés", "en español"…)
   if(/\b(in english|english please|speak english|switch to english|en ingl[eé]s)\b/.test(s) || /\bi?\s*(don'?t|do not|no)\s*(speak|hablo|ablo|habla)\s*spanish\b/.test(s) || /\bno\s*espa[ñn]ol\b/.test(s)) return 'en';
   if(/\b(in spanish|switch to spanish|en espa[ñn]ol|espa[ñn]ol por favor)\b/.test(s) || /\bh[áa]bla(me)?\s*espa[ñn]ol\b/.test(s) || /\bno\s*(hablo|ablo|abla|habla|speak)\s*(ingl[eé]s|english)\b/.test(s)) return 'es';
+  return null;
+}
+function detectLang(text){
+  const ex=explicitLangRequest(text); if(ex) return ex;
+  const s=(text||'').toLowerCase().trim(); if(!s) return null;
   if(/[ñ¿¡áéíóúü]/.test(s)) return 'es';                 // Spanish-only characters
   const esW=new Set(['el','la','los','las','un','una','que','de','en','y','es','no','si','por','para','con','como','que','como','hola','gracias','quiero','necesito','ayuda','hablo','habla','entiendo','espanol','ingles','mi','tu','su','pero','porque','esto','esta','este','muy','mas','puedo','puede','nino','hijo','hija','leccion','tarea','fracciones','matematicas']);
   const enW=new Set(['the','a','an','and','is','are','to','of','in','for','with','i','you','my','your','what','how','hello','hi','thanks','thank','want','need','help','speak','understand','english','spanish','but','because','this','that','very','more','can','child','son','daughter','lesson','homework','do','dont','please','math']);
@@ -330,7 +334,15 @@ function detectLang(text){
   if(words.length>=2){ if(es>=2&&es>en) return 'es'; if(en>=2&&en>es) return 'en'; }
   return null;
 }
-function maybeSwitchLang(text){ const d=detectLang(text); if(d && d!==lang){ setLang(d,false); return d; } return null; }
+// Once the user manually picks a language via the EN/ES slider, passive auto-detection must
+// NOT override it — only an explicit "speak English / en español" request switches the language.
+let langPinned = !!localStorage.getItem('st_lang');
+function maybeSwitchLang(text){
+  const ex=explicitLangRequest(text);
+  if(ex){ langPinned=true; if(ex!==lang){ setLang(ex,false); return ex; } return null; }
+  if(langPinned) return null;
+  const d=detectLang(text); if(d && d!==lang){ setLang(d,false); return d; } return null;
+}
 
 /* ============ DEMO LESSONS (curated sample set) ============ */
 const DEMO_LESSONS = [
@@ -558,7 +570,9 @@ function buildParentSystem(){
   const ctxLine = c.lessonTitle
     ? `The child's current lesson is "${c.lessonTitle}" (Grade ${c.grade} ${c.subject}; topic: ${c.domain}). Key idea: ${c.explain} Worked example: ${c.example}`
     : `No specific lesson is selected — help with whatever school topic the parent asks about.`;
-  return `You are the Skool Tutors Parent Assistant — a warm, patient guide that helps a PARENT or caregiver understand a school topic so they can help their child at home. You speak to an ADULT, not the child.
+  return `LANGUAGE — ABSOLUTE RULE: Write EVERY word of EVERY reply in ${lang==='es'?'Spanish (español)':'English'}, no matter what language the parent types or speaks in. Never switch languages unless the parent explicitly asks you to.
+
+You are the Skool Tutors Parent Assistant — a warm, patient guide that helps a PARENT or caregiver understand a school topic so they can help their child at home. You speak to an ADULT, not the child.
 ${ctxLine}
 How you help:
 - Explain clearly in plain, everyday language. UNLIKE a student tutor, you SHOULD give the parent direct explanations, worked examples, and the answer — the parent needs to understand it themselves.
