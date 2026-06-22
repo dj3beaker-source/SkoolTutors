@@ -514,10 +514,32 @@ function initRec(){
   rec=new SpeechRec(); rec.lang=lang==='es'?'es-ES':'en-US'; rec.interimResults=true; rec.continuous=false;
   rec.onstart=()=>{listening=true;updateMicBtn();};
   rec.onresult=(e)=>{ const inp=document.getElementById('chatIn'); let fin='',int=''; for(const r of e.results){ if(r.isFinal)fin+=r[0].transcript; else int+=r[0].transcript; } inp.value=(fin+int).trim(); if(fin.trim()){ rec.stop(); sendChat(); } };
-  rec.onerror=(e)=>{ listening=false; updateMicBtn(); if(e.error==='not-allowed') addMsg('sys', lang==='es'?'Micrófono bloqueado — permite el acceso para hablar con el tutor.':'Microphone blocked — allow mic access to speak to the tutor.'); };
+  rec.onerror=(e)=>{ listening=false; updateMicBtn();
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){ micGranted=false; addMsg('sys', micBlockedMsg()); }
+    else if(e.error==='network') addMsg('sys', lang==='es'?'La voz necesita conexión a internet (y Chrome o Edge).':'Voice input needs an internet connection (and Chrome or Edge).'); };
   rec.onend=()=>{ listening=false; updateMicBtn(); };
 }
-function toggleMic(){ if(!SpeechRec) return; if(listening){rec.stop();return;} if(!rec)initRec(); voiceMode=true; if(typeof paVoiceMode!=='undefined'&&paVoiceMode){paVoiceMode=false; if(paListening&&paRec){try{paRec.stop();}catch(e){}} if(paAudio){try{paAudio.pause();}catch(e){}paAudio=null;} paUpdateCall();} stopSpeaking(); document.getElementById('chatIn').value=''; try{rec.start();}catch(_){}}
+// Explicitly request the mic so the browser shows its permission prompt and we can give a
+// clear message if it's blocked. webkitSpeechRecognition.start() alone often fails silently
+// when permission hasn't been granted yet (no prompt, no audio). Cached after first grant.
+let micGranted=false;
+function ensureMic(){
+  if(micGranted || !(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)) return Promise.resolve(true);
+  return navigator.mediaDevices.getUserMedia({audio:true})
+    .then(s=>{ s.getTracks().forEach(t=>t.stop()); micGranted=true; return true; })
+    .catch(()=>false);
+}
+function micBlockedMsg(){ return lang==='es'?'Micrófono bloqueado. Toca el icono de cámara o candado en la barra de direcciones, permite el micrófono y vuelve a intentar.':'Microphone blocked. Tap the camera/lock icon in the address bar, allow the microphone, then try again.'; }
+function toggleMic(){
+  if(listening){ rec.stop(); return; }
+  if(!SpeechRec){ addMsg('sys', lang==='es'?'La entrada por voz necesita Chrome o Edge en este dispositivo. Puedes escribir tu pregunta.':'Voice input needs Chrome or Edge on this device. You can type your question instead.'); return; }
+  if(!rec) initRec();
+  voiceMode=true;
+  if(typeof paVoiceMode!=='undefined'&&paVoiceMode){ paVoiceMode=false; if(paListening&&paRec){try{paRec.stop();}catch(e){}} if(paAudio){try{paAudio.pause();}catch(e){}paAudio=null;} paUpdateCall(); }
+  stopSpeaking();
+  document.getElementById('chatIn').value='';
+  ensureMic().then(ok=>{ if(ok){ try{rec.start();}catch(_){} } else { listening=false; updateMicBtn(); addMsg('sys', micBlockedMsg()); } });
+}
 function updateMicBtn(){ const b=document.getElementById('micBtn'); if(!b) return; if(!SpeechRec){ b.style.display='none'; return; } b.classList.toggle('listening',listening); b.textContent=listening?'⏺':'🎤'; document.getElementById('chatIn').placeholder=listening?(lang==='es'?'Escuchando…':'Listening…'):(lang==='es'?'Escribe tu respuesta o pregunta…':'Type your answer or question…'); }
 
 /* ---- Voice-first welcome: speak a prompt + open the mic so kids who can't read can talk ---- */
@@ -592,9 +614,11 @@ function paToggleCall(){
   if(paVoiceMode){ paVoiceMode=false; if(paListening&&paRec){try{paRec.stop();}catch(e){}} if(paAudio){try{paAudio.pause();}catch(e){}paAudio=null;} paUpdateCall(); paStatus(lang==='es'?'Llamada finalizada. Toca 📞 para empezar.':'Call ended. Tap 📞 to start.'); return; }
   if(!SpeechRec){ paStatus(lang==='es'?'Este navegador no puede usar el micrófono; escribe tu pregunta.':'This browser can’t use the mic; type your question.'); return; }
   voiceMode=false; if(listening&&rec){try{rec.stop();}catch(e){}}   // stop the student tutor loop
-  paVoiceMode=true; primeMic(); paUpdateCall();
-  paStatus(lang==='es'?'🎤 Escuchando — hazme una pregunta sobre la lección.':'🎤 Listening — ask me about the lesson.');
-  paBeginListen();
+  paVoiceMode=true; paUpdateCall();
+  ensureMic().then(ok=>{
+    if(ok){ paStatus(lang==='es'?'🎤 Escuchando — hazme una pregunta sobre la lección.':'🎤 Listening — ask me about the lesson.'); paBeginListen(); }
+    else { paVoiceMode=false; paUpdateCall(); paStatus(micBlockedMsg()); }
+  });
 }
 
 boot();
