@@ -165,14 +165,17 @@
     <button class="btn btn-primary" style="width:100%" onclick="submitGate()" data-i18n="gate.btn">Unlock demo</button>
     <div class="gate-err" id="gateErr"></div>
     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-      <button id="reqToggle" class="btn btn-ghost btn-sm" onclick="toggleRequest()" data-i18n="gate.req">Don't have a code? Request one →</button>
+      <button id="reqToggle" class="btn btn-ghost btn-sm" onclick="toggleRequest()" data-i18n="gate.req">Want Skool Tutors in your program? Book a call →</button>
       <div id="reqForm" style="display:none;text-align:left">
-        <p style="font-size:13px;color:var(--muted);margin:0 0 10px" data-i18n="gate.reqSub">Tell us where you're from and we'll email you a demo code.</p>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px" data-i18n="gate.reqSub">Tell us about your program and we'll set up a short Zoom to plan how Skool Tutors can fit.</p>
         <input class="req-in" id="reqName" data-i18n-ph="req.name" placeholder="Your name">
         <input class="req-in" id="reqEmail" type="email" data-i18n-ph="req.email" placeholder="Work email">
         <input class="req-in" id="reqOrg" data-i18n-ph="req.org" placeholder="School / district / program">
+        <input class="req-in" id="reqRole" data-i18n-ph="req.role" placeholder="Your role (optional)">
+        <input class="req-in" id="reqTimes" data-i18n-ph="req.times" placeholder="Best days/times for a call (optional)">
+        <textarea class="req-in" id="reqNotes" data-i18n-ph="req.msg" placeholder="What would you like to cover? (optional)" style="min-height:62px;resize:vertical"></textarea>
         <input id="reqHp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
-        <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="submitRequest()" data-i18n="req.send">Email me a demo code</button>
+        <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="submitRequest()" data-i18n="req.send">Request a meeting</button>
         <div class="gate-err" id="reqMsg"></div>
       </div>
     </div>
@@ -223,14 +226,14 @@ function openDemoRequest(){
 }
 async function submitRequest(){
   const v=id=>(document.getElementById(id).value||'').trim();
-  const name=v('reqName'), email=v('reqEmail'), org=v('reqOrg'), website=v('reqHp');
+  const name=v('reqName'), email=v('reqEmail'), org=v('reqOrg'), role=v('reqRole'), times=v('reqTimes'), message=v('reqNotes'), website=v('reqHp');
   const msg=document.getElementById('reqMsg'); msg.style.color='';
-  if(!name||!org||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent=(lang==='es'?'Agrega tu nombre, un correo válido y tu escuela.':'Add your name, a valid email, and your school.'); return; }
+  if(!name||!org||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent=(lang==='es'?'Agrega tu nombre, un correo válido y tu programa.':'Add your name, a valid email, and your program.'); return; }
   msg.textContent=(lang==='es'?'Enviando…':'Sending…');
   try{
-    const r=await fetch('https://www.homeskooltutor.com/request-demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,email,org,website})});
+    const r=await fetch('https://www.homeskooltutor.com/schedule-meeting',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,email,org,role,times,message,website})});
     const d=await r.json().catch(()=>({}));
-    if(r.ok&&d.ok){ msg.style.color='#aef0db'; msg.textContent=(lang==='es'?'¡Listo! Revisa tu correo para el código de acceso.':'Sent! Check your email for the access code.'); }
+    if(r.ok&&d.ok){ msg.style.color='#aef0db'; msg.textContent=(lang==='es'?'¡Gracias! Te escribiremos para coordinar una hora.':"Thanks! We'll email you to set up a time."); }
     else{ msg.textContent=d.error||(lang==='es'?'Algo salió mal.':'Something went wrong.'); }
   }catch(e){ msg.textContent=(lang==='es'?'No se pudo contactar al servidor.':'Could not reach the server.'); }
 }
@@ -257,9 +260,9 @@ const UI = {
     "b.ph":"Type a question for the parent agent…","b.status0":"Tap 📞 to start a voice call, or just type a question to begin.",
     "cta.title":"Bring Skool Tutors to your students",
     "cta.body":"Standards-aligned, bilingual, and customizable to your district, alternative school, or after-school program. Let's set up a pilot.",
-    "cta.btn":"Request a demo →",
+    "cta.btn":"Book a demo call →",
     "footer":"© 2026 Skool Tutors · Built on the HomeSkool tutoring engine · Aligned to Common Core, NGSS &amp; the C3 Framework.<br>An independent product; not endorsed by the standards' authors.",
-    "gate.title":"🔒 Demo access","gate.sub":"Enter the access code to start the live Skool Tutors demo.","gate.ph":"Access code","gate.btn":"Unlock demo","gate.req":"Don't have a code? Request a demo →","gate.reqSub":"Tell us where you're from and we'll email you a demo access code.","req.name":"Your name","req.email":"Work email","req.org":"School / district / program","req.send":"Email me a demo code",
+    "gate.title":"🔒 Demo access","gate.sub":"Enter the access code to start the live Skool Tutors demo.","gate.ph":"Access code","gate.btn":"Unlock demo","gate.req":"Want Skool Tutors in your program? Book a call →","gate.reqSub":"Tell us about your program and we'll set up a short Zoom to plan how Skool Tutors can fit.","req.name":"Your name","req.email":"Work email","req.org":"School / district / program","req.role":"Your role (optional)","req.times":"Best days/times for a call (optional)","req.msg":"What would you like to cover? (optional)","req.send":"Request a meeting",
   },
   es:{
     "nav.pilot":"Solicitar un piloto",
@@ -276,9 +279,9 @@ const UI = {
     "b.ph":"Escribe una pregunta para el asistente…","b.status0":"Toca 📞 para iniciar una llamada de voz, o escribe una pregunta para empezar.",
     "cta.title":"Lleva Skool Tutors a tus estudiantes",
     "cta.body":"Alineado a los estándares, bilingüe y personalizable para tu distrito, escuela alternativa o programa extraescolar. Organicemos un piloto.",
-    "cta.btn":"Solicitar una demo →",
+    "cta.btn":"Agenda una llamada →",
     "footer":"© 2026 Skool Tutors · Desarrollado sobre el motor de tutoría de HomeSkool · Alineado con Common Core, NGSS y el Marco C3.<br>Un producto independiente; sin respaldo de los autores de los estándares.",
-    "gate.title":"🔒 Acceso a la demo","gate.sub":"Ingresa el código de acceso para iniciar la demo en vivo de Skool Tutors.","gate.ph":"Código de acceso","gate.btn":"Desbloquear demo","gate.req":"¿No tienes código? Solicita una demo →","gate.reqSub":"Dinos de dónde eres y te enviaremos un código de acceso por correo.","req.name":"Tu nombre","req.email":"Correo de trabajo","req.org":"Escuela / distrito / programa","req.send":"Envíenme un código",
+    "gate.title":"🔒 Acceso a la demo","gate.sub":"Ingresa el código de acceso para iniciar la demo en vivo de Skool Tutors.","gate.ph":"Código de acceso","gate.btn":"Desbloquear demo","gate.req":"¿Quieres Skool Tutors en tu programa? Agenda una llamada →","gate.reqSub":"Cuéntanos sobre tu programa y coordinaremos una breve videollamada para ver cómo encaja Skool Tutors.","req.name":"Tu nombre","req.email":"Correo de trabajo","req.org":"Escuela / distrito / programa","req.role":"Tu cargo (opcional)","req.times":"Mejores días/horas para una llamada (opcional)","req.msg":"¿Qué te gustaría tratar? (opcional)","req.send":"Solicitar una reunión",
   }
 };
 function t(k){ return (UI[lang]&&UI[lang][k]) || UI.en[k] || ''; }
