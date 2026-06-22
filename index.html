@@ -201,7 +201,13 @@ async function boot(){
   if(BACKEND.gated && DEMO_TOKEN !== 'verified'){ document.getElementById('gate').style.display='grid'; document.getElementById('demoArea').classList.add('locked'); }
   else { unlockUI(); }
 }
-function unlockUI(){ document.getElementById('gate').style.display='none'; document.getElementById('demoArea').classList.remove('locked'); startSession(); }
+function unlockUI(){ document.getElementById('gate').style.display='none'; document.getElementById('demoArea').classList.remove('locked'); startSession(); paSeedGreeting(); }
+function paSeedGreeting(){
+  if(typeof paMessages!=='undefined' && paMessages.length) return;
+  const box=document.getElementById('paMsgs');
+  if(box){ const m=document.createElement('div'); m.className='msg bot'; m.textContent=LANG_NOTE; box.appendChild(m); box.scrollTop=box.scrollHeight; }
+  if(typeof paMessages!=='undefined') paMessages.push({role:'bot',text:LANG_NOTE});
+}
 async function submitGate(){
   const code = document.getElementById('gateCode').value.trim();
   const err = document.getElementById('gateErr'); err.textContent='';
@@ -337,12 +343,10 @@ function detectLang(text){
 // Once the user manually picks a language via the EN/ES slider, passive auto-detection must
 // NOT override it — only an explicit "speak English / en español" request switches the language.
 let langPinned = !!localStorage.getItem('st_lang');
-function maybeSwitchLang(text){
-  const ex=explicitLangRequest(text);
-  if(ex){ langPinned=true; if(ex!==lang){ setLang(ex,false); return ex; } return null; }
-  if(langPinned) return null;
-  const d=detectLang(text); if(d && d!==lang){ setLang(d,false); return d; } return null;
-}
+// Auto language-swap removed per design: language is controlled ONLY by the EN/ES slider.
+function maybeSwitchLang(text){ return null; }
+// Opening line for the assistants — tells the user the language is slider-controlled (bilingual).
+const LANG_NOTE = "You can switch my language between English and Spanish with the slider at the top. · Puedes cambiar mi idioma entre inglés y español con el control deslizante de arriba.";
 
 /* ============ DEMO LESSONS (curated sample set) ============ */
 const DEMO_LESSONS = [
@@ -440,7 +444,7 @@ function startSession(){
   const greeting = lang==='es'
     ? `¡Hola! Soy tu tutor de Skool Tutors. Hoy vemos "${l.titleEs||l.title}" (Grado ${l.grade} ${l.subjectEs||l.subject}). Te guiaré con preguntas en vez de darte las respuestas. ¿Quieres una breve explicación o probamos juntos un problema de práctica?`
     : `Hi! I'm your Skool Tutors tutor. Today we're on "${l.title}" (Grade ${l.grade} ${l.subject}). I'll guide you with questions instead of just giving answers. Want a quick lesson, or shall we try a practice problem together?`;
-  addMsg('bot', greeting, {silent:true});
+  addMsg('bot', LANG_NOTE+'\n\n'+greeting, {silent:true});
   voiceWelcome();
 }
 
