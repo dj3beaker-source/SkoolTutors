@@ -107,15 +107,6 @@
 </div></header>
 
 <main class="wrap">
-  <!-- SALES VIDEO -->
-  <section style="margin:18px 0 4px">
-    <div id="salesFrame" data-cur="en" style="max-width:760px;margin:0 auto;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#000;box-shadow:0 18px 50px rgba(0,0,0,.4)">
-      <video controls playsinline preload="metadata" poster="assets/sales-poster.jpg" style="display:block;width:100%;height:auto;background:#000">
-        <source src="assets/sales-video.mp4" type="video/mp4">
-      </video>
-    </div>
-    <p style="text-align:center;color:var(--muted);font-size:13.5px;margin:12px auto 0;max-width:620px" data-i18n="vid.cap">See how the Parent Assistant supports families and frees up your teachers — then try it live below.</p>
-  </section>
 
   <div class="demos" id="demoArea">
     <!-- DEMO A: VERBAL TUTOR -->
@@ -298,19 +289,6 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-ph')); if(v) el.placeholder=v; });
   document.querySelectorAll('.lang-switch .opt').forEach(o=>o.classList.toggle('on', o.dataset.lang===lang));
   buildLessonOptions();   // relocalize the lesson dropdown (preserves the current selection)
-  applySalesVideo();      // the sales/marketing video follows the language
-}
-// Swap the top sales video by language: English plays the local mp4; Spanish plays the
-// YouTube cut (kept off-repo so we stay under GitHub's file-size limit).
-const SALES_ES_YT = "D7LW6Ar8RSk";
-function applySalesVideo(){
-  const f=document.getElementById('salesFrame'); if(!f) return;
-  const want = lang==='es' ? 'es' : 'en';
-  if(f.dataset.cur===want) return;         // already correct — don't rebuild / interrupt playback
-  f.dataset.cur=want;
-  f.innerHTML = want==='es'
-    ? `<div style="position:relative;width:100%;padding-top:56.25%"><iframe src="https://www.youtube.com/embed/${SALES_ES_YT}" title="Skool Tutors — video para escuelas" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div>`
-    : `<video controls playsinline preload="metadata" poster="assets/sales-poster.jpg" style="display:block;width:100%;height:auto;background:#000"><source src="assets/sales-video.mp4" type="video/mp4"></video>`;
 }
 function setLang(newLang, regreet){
   if(newLang!==lang){
