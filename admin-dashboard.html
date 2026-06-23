@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Skool Tutors</title>
+<meta name="description" content="Skool Tutors admin dashboard: rosters, cohort progress, standards coverage, seat usage, and a visible FERPA-aligned privacy posture — built for school and district buyers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E7E5DF; --app:#F5F7FA; --card:#fff; --line:#E6EAF0; --line2:#EDF0F5; --line3:#F3F5F8;
+    --ink:#1A2233; --ink2:#33405A; --muted:#6B7787; --muted2:#9AA6BC;
+    --navy:#131B2E; --navy2:#1E2A45; --navy3:#0E1626; --navline:#243150; --navtext:#9AA6BC;
+    --indigo:#3551B5; --indigo-l:#6E8BFF; --green:#0E9F6E; --green2:#5FBF9C; --green3:#9AD9C2; --green4:#E3EBE8;
+    --amber:#E89B2B; --amber-d:#9A6A12; --orange:#C2410C; --red:#E0533B;
+    --sans:'Libre Franklin',system-ui,sans-serif; --mono:'Spline Sans Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1340px;margin:0 auto;padding:24px 20px 40px}
+  .app{background:var(--app);border-radius:14px;box-shadow:0 22px 50px rgba(20,20,30,.18);overflow:hidden;display:flex;min-height:820px}
+  .ico{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  /* sidebar */
+  .side{width:222px;flex:none;background:var(--navy);display:flex;flex-direction:column;padding:20px 14px;color:var(--navtext)}
+  .logo{display:flex;align-items:center;gap:10px;padding:4px 8px 22px}
+  .logo .mk{width:30px;height:30px;border-radius:8px;background:var(--indigo);display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;font-family:var(--mono)}
+  .logo .nm{font-weight:700;font-size:16px;color:#EEF1F7;letter-spacing:-.01em}
+  .nav{display:flex;flex-direction:column;gap:3px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:9px;font-size:14px;color:var(--navtext);cursor:pointer}
+  .nav a:hover{background:#19223a}
+  .nav a.on{background:var(--navy2);color:#fff;font-weight:600}
+  .nav a.on .ico{stroke:var(--indigo-l)}
+  .side .foot{margin-top:auto;display:flex;flex-direction:column;gap:14px}
+  .priv-mini{background:var(--navy3);border:1px solid var(--navline);border-radius:10px;padding:12px;display:flex;gap:9px;align-items:flex-start}
+  .priv-mini .ico{stroke:var(--green);width:20px;height:20px}
+  .priv-mini div{font-size:11.5px;line-height:1.4;color:#8FB9A8}
+  .admin{display:flex;align-items:center;gap:10px;padding:14px 8px 6px;border-top:1px solid var(--navline)}
+  .admin .av{width:32px;height:32px;border-radius:50%;background:var(--indigo);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px}
+  .admin .nm{color:#EEF1F7;font-size:13px;font-weight:600;line-height:1.2}
+  .admin .ro{color:#6E7A93;font-size:11px}
+  /* main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .top{height:64px;flex:none;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:14px;flex-wrap:wrap}
+  .top h1{font-size:18px;font-weight:700;color:var(--ink);margin:0}
+  .chip{display:flex;align-items:center;gap:8px;border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600}
+  .chip.school{background:#F0F3F8;border:1px solid var(--line);color:var(--ink2)}
+  .chip.pilot{background:#FFF4E5;border:1px solid #FCE2BC;color:var(--amber-d);font-size:12.5px}
+  .chip.pilot .dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}
+  .top .sp{flex:1}
+  .season{font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .btn{background:var(--indigo);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  .content{flex:1;overflow:auto;padding:22px 24px;display:flex;flex-direction:column;gap:18px;background:var(--app)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .kpi .k{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:8px}
+  .kpi .v{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--ink)}
+  .kpi .v small{font-size:14px;color:var(--muted2);font-weight:400}
+  .kpi .sub{margin-top:10px;font-size:12px;font-weight:600}
+  .kpi .track{margin-top:10px;height:6px;border-radius:4px;background:var(--line2);overflow:hidden}
+  .kpi .track i{display:block;height:100%;background:var(--indigo)}
+  .cols{flex:1;display:grid;grid-template-columns:1.55fr 1fr;gap:18px;min-height:0}
+  .col{display:flex;flex-direction:column;gap:18px;min-height:0}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .ph h2{font-size:15px;font-weight:700;color:var(--ink);margin:0}
+  .ph .link{font-size:12px;color:var(--indigo);font-weight:600;cursor:pointer}
+  /* table */
+  .tbl{font-size:13px;color:var(--ink2)}
+  .tr{display:grid;grid-template-columns:1.4fr .6fr .7fr 1.3fr .5fr;gap:10px;align-items:center}
+  .thead{font-size:11px;color:var(--muted2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding-bottom:9px;border-bottom:1px solid var(--line2)}
+  .trow{padding:12px 0;border-bottom:1px solid var(--line3)}
+  .trow:last-child{border-bottom:0}
+  .mono{font-family:var(--mono)}
+  .tag{font-size:10px;background:#FFF4E5;color:var(--amber-d);padding:2px 6px;border-radius:5px;font-weight:600}
+  .mini{flex:1;height:6px;border-radius:4px;background:var(--line2);overflow:hidden}
+  .mini i{display:block;height:100%;background:var(--indigo)}
+  .bars{flex:1;display:flex;align-items:flex-end;gap:14px;padding-top:14px;min-height:120px}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end}
+  .bars .b i{width:100%;background:#C7D2F0;border-radius:6px 6px 0 0}
+  .bars .b span{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+  /* heatmap */
+  .heat{display:grid;grid-template-columns:78px repeat(6,1fr);gap:5px;align-items:center}
+  .heat .h{font-size:10px;color:var(--muted2);text-align:center;font-family:var(--mono)}
+  .heat .rl{font-size:11px;color:var(--ink2);font-weight:500}
+  .heat .c{height:22px;border-radius:4px}
+  .legend{display:flex;align-items:center;gap:14px;margin-top:14px;font-size:11px;color:var(--muted)}
+  .legend .s{display:flex;align-items:center;gap:5px}
+  .legend .sw{width:11px;height:11px;border-radius:3px}
+  /* privacy posture */
+  .posture{background:var(--navy3);border-radius:12px;padding:18px 20px;color:#CDE3DA}
+  .posture .ph2{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .posture .ph2 .ico{stroke:var(--green);width:22px;height:22px}
+  .posture .ph2 h2{font-size:15px;font-weight:700;color:#EEF1F7;margin:0}
+  .posture ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px;font-size:12.5px;line-height:1.4}
+  .posture li{display:flex;gap:9px}
+  .posture li .ck{color:var(--green);font-weight:700;flex:none}
+  /* at-risk */
+  .risk{display:flex;flex-direction:column;gap:11px}
+  .risk .r{display:flex;align-items:center;gap:11px}
+  .risk .av{width:30px;height:30px;border-radius:8px;background:#EEF1F8;color:var(--indigo);display:grid;place-items:center;font-size:11px;font-weight:700;font-family:var(--mono);flex:none}
+  .risk .nm{font-size:13px;font-weight:600;color:var(--ink2)}
+  .risk .mt{font-size:11px;color:var(--muted2)}
+  .risk .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .badge{font-size:11px;padding:3px 9px;border-radius:6px;font-weight:600}
+  .trend-up{color:var(--green);font-weight:700}.trend-flat{color:var(--muted2);font-weight:700}
+  @media(max-width:980px){
+    .wrap{padding:12px 10px 28px}
+    .app{flex-direction:column}
+    .side{width:auto;flex-direction:row;flex-wrap:wrap;gap:8px;padding:14px}
+    .side .foot{margin-top:0;flex-direction:row;flex-wrap:wrap}.priv-mini{flex:1;min-width:220px}.logo{padding:0 8px 0 0}
+    .nav{flex-direction:row;flex-wrap:wrap}.nav a{padding:8px 10px}
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .cols{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="app">
+    <!-- sidebar -->
+    <div class="side">
+      <div class="logo"><span class="mk">S</span><span class="nm">Skool Tutors</span></div>
+      <nav class="nav">
+        <a class="on"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Overview</a>
+        <a><svg class="ico" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.2a3 3 0 0 1 0 5.6"/><path d="M17.5 19a5 5 0 0 0-2.5-4.3"/></svg>Roster</a>
+        <a><svg class="ico" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5L12 3Z"/><path d="m3 12 9 4.5L21 12"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Cohorts</a>
+        <a><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><path d="m13 17 2.5 2.5L21 14"/></svg>Standards</a>
+        <a><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M21 20H3"/></svg>Usage &amp; Seats</a>
+        <a><svg class="ico" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h6"/></svg>Reports</a>
+      </nav>
+      <div class="foot">
+        <div class="priv-mini"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4 3 7 7 8 4-1 7-4 7-8V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg><div>No real names stored · FERPA-aligned</div></div>
+        <div class="admin"><div class="av">DM</div><div><div class="nm">D. Marsh</div><div class="ro">District admin</div></div></div>
+      </div>
+    </div>
+    <!-- main -->
+    <div class="main">
+      <div class="top">
+        <h1>Overview</h1>
+        <div class="chip school">Riverside Alternative Academy <span style="color:var(--muted2)">▾</span></div>
+        <div class="chip pilot"><span class="dot"></span>Pilot · Day 18 of 30</div>
+        <div class="sp"></div>
+        <div class="season">Spring 2026</div>
+        <button class="btn">Export report</button>
+      </div>
+      <div class="content">
+        <!-- KPIs -->
+        <div class="kpis">
+          <div class="kpi"><div class="k">Active students</div><div class="v">142<small> / 160 seats</small></div><div class="track"><i style="width:89%"></i></div></div>
+          <div class="kpi"><div class="k">Sessions this week</div><div class="v">1,284</div><div class="sub" style="color:var(--green)">▲ 18% vs last week</div></div>
+          <div class="kpi"><div class="k">Avg mastery gain</div><div class="v">+0.7<small> levels</small></div><div class="sub" style="color:var(--green)">▲ on pace for pilot goal</div></div>
+          <div class="kpi"><div class="k">At-risk flags</div><div class="v" style="color:var(--orange)">7</div><div class="sub" style="color:var(--orange)">needs teacher follow-up</div></div>
+        </div>
+        <!-- two columns -->
+        <div class="cols">
+          <div class="col">
+            <!-- cohort table -->
+            <div class="panel" style="flex:none">
+              <div class="ph"><h2>Cohort progress</h2><span class="link">View all</span></div>
+              <div class="tbl">
+                <div class="tr thead"><div>Cohort</div><div>Students</div><div>Sessions</div><div>Standards covered</div><div style="text-align:right">Trend</div></div>
+                <div class="tr trow"><div style="font-weight:600">Grade 4–5</div><div class="mono">28</div><div class="mono">312</div><div style="display:flex;align-items:center;gap:8px"><div class="mini"><i style="width:74%"></i></div><span class="mono" style="font-size:11px;color:var(--muted)">74%</span></div><div style="text-align:right"><span class="trend-up">▲</span></div></div>
+                <div class="tr trow"><div style="font-weight:600">Grade 6–8</div><div class="mono">41</div><div class="mono">408</div><div style="display:flex;align-items:center;gap:8px"><div class="mini"><i style="width:61%"></i></div><span class="mono" style="font-size:11px;color:var(--muted)">61%</span></div><div style="text-align:right"><span class="trend-up">▲</span></div></div>
+                <div class="tr trow"><div style="font-weight:600">Credit Recovery <span class="tag">priority</span></div><div class="mono">19</div><div class="mono">276</div><div style="display:flex;align-items:center;gap:8px"><div class="mini"><i style="width:48%;background:var(--amber)"></i></div><span class="mono" style="font-size:11px;color:var(--muted)">48%</span></div><div style="text-align:right"><span class="trend-flat">▬</span></div></div>
+                <div class="tr trow"><div style="font-weight:600">ELL / Bilingual</div><div class="mono">33</div><div class="mono">288</div><div style="display:flex;align-items:center;gap:8px"><div class="mini"><i style="width:69%"></i></div><span class="mono" style="font-size:11px;color:var(--muted)">69%</span></div><div style="text-align:right"><span class="trend-up">▲</span></div></div>
+              </div>
+            </div>
+            <!-- usage bars -->
+            <div class="panel" style="flex:1;display:flex;flex-direction:column;min-height:0">
+              <div class="ph"><h2>Weekly tutoring sessions</h2><span class="mono" style="font-size:12px;color:var(--muted)">last 8 weeks</span></div>
+              <div class="bars">
+                <div class="b"><i style="height:42%"></i><span>W1</span></div>
+                <div class="b"><i style="height:55%"></i><span>W2</span></div>
+                <div class="b"><i style="height:50%"></i><span>W3</span></div>
+                <div class="b"><i style="height:64%;background:#9DB1E8"></i><span>W4</span></div>
+                <div class="b"><i style="height:60%;background:#9DB1E8"></i><span>W5</span></div>
+                <div class="b"><i style="height:78%;background:var(--indigo)"></i><span>W6</span></div>
+                <div class="b"><i style="height:72%;background:var(--indigo)"></i><span>W7</span></div>
+                <div class="b"><i style="height:92%;background:var(--indigo)"></i><span>W8</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <!-- standards heatmap -->
+            <div class="panel" style="flex:none">
+              <h2 style="font-size:15px;font-weight:700;margin:0 0 3px">Standards coverage</h2>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Common Core Math · mastery by domain</div>
+              <div class="heat" id="heat"></div>
+              <div class="legend">
+                <div class="s"><span class="sw" style="background:var(--green4)"></span>Not started</div>
+                <div class="s"><span class="sw" style="background:var(--green3)"></span>Emerging</div>
+                <div class="s"><span class="sw" style="background:var(--green)"></span>Mastered</div>
+              </div>
+            </div>
+            <!-- privacy posture -->
+            <div class="posture">
+              <div class="ph2"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4 3 7 7 8 4-1 7-4 7-8V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg><h2>Privacy posture</h2></div>
+              <ul>
+                <li><span class="ck">✓</span>Students appear as animal nicknames — no real names stored.</li>
+                <li><span class="ck">✓</span>FERPA-aligned; records stay on district-managed devices.</li>
+                <li><span class="ck">✓</span>Tutor conversations are not used to train models.</li>
+              </ul>
+            </div>
+            <!-- at-risk -->
+            <div class="panel" style="flex:1;min-height:0">
+              <div class="ph"><h2>Needs follow-up</h2><span class="badge" style="background:#FEF0E9;color:var(--orange)">7 flagged</span></div>
+              <div class="risk">
+                <div class="r"><div class="av">BO</div><div style="flex:1"><div class="nm">Blue Otter</div><div class="mt">Grade 6 · 5 days inactive</div></div><span class="dot" style="background:var(--red)"></span></div>
+                <div class="r"><div class="av">QF</div><div style="flex:1"><div class="nm">Quick Fox</div><div class="mt">Credit Recovery · stuck on fractions</div></div><span class="dot" style="background:var(--amber)"></span></div>
+                <div class="r"><div class="av">CH</div><div style="flex:1"><div class="nm">Calm Heron</div><div class="mt">Grade 8 · mastery dipped</div></div><span class="dot" style="background:var(--amber)"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // standards heatmap (rows = domains, cols = G4..G8, HS) — green = mastery level
+  var C = {0:'var(--green4)',1:'var(--green3)',2:'var(--green2)',3:'var(--green)'};
+  var rows = [
+    ['Number',   [3,2,3,1,2,0]],
+    ['Algebra',  [1,2,2,3,1,0]],
+    ['Geometry', [2,1,0,1,2,0]],
+    ['Data',     [3,3,1,2,0,0]]
+  ];
+  var grades = ['','G4','G5','G6','G7','G8','HS'];
+  var h = grades.map(g=>`<div class="h">${g}</div>`).join('');
+  rows.forEach(function(r){
+    h += `<div class="rl">${r[0]}</div>` + r[1].map(v=>`<div class="c" style="background:${C[v]}"></div>`).join('');
+  });
+  document.getElementById('heat').innerHTML = h;
+</script>
+</body>
+</html>
